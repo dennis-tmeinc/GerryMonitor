@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "459091194569",
+    "firebase_url": "https://tme-marcus.firebaseio.com",
+    "project_id": "tme-marcus",
+    "storage_bucket": "tme-marcus.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459091194569:android:68937156d0158bf9205318",
+        "android_client_info": {
+          "package_name": "com.tmeinc.gerrymonitor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "459091194569-8hvgop5uv2t87tmph0v2n6l7krd00dua.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK-k1lto8FghVecO7PVFYjRpRAvkNgBgY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "459091194569-8hvgop5uv2t87tmph0v2n6l7krd00dua.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
