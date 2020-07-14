@@ -8,10 +8,6 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.tmeinc.gerrymonitor.GerryMainActivity
-import com.tmeinc.gerrymonitor.GerryService
-import com.tmeinc.gerrymonitor.R
-import org.json.JSONObject
 
 class LoginActivity : AppCompatActivity() {
 
@@ -37,11 +33,13 @@ class LoginActivity : AppCompatActivity() {
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item)
         if (GerryService.instance != null) {
             val cl = GerryService.gerryClient["clients"]
-            if (cl is JSONObject) {
-                for (id in cl.keys()) {
-                    adapter.add(id)
-                    if (id == GerryService.clientID) {
-                        sel = adapter.getPosition(id)
+            if (cl is Map<*, *>) {
+                for (id in cl.keys) {
+                    if (id is String) {
+                        adapter.add(id)
+                        if (id == GerryService.clientID) {
+                            sel = adapter.getPosition(id)
+                        }
                     }
                 }
             }
@@ -66,8 +64,12 @@ class LoginActivity : AppCompatActivity() {
 
                 if (GerryService.instance != null) {
                     loading.visibility = View.VISIBLE
+                    var cliendId = client_id.selectedItem?.toString()
+                    if (cliendId == null) {
+                        cliendId = "marcus1"
+                    }
                     val obj = mapOf(
-                        "clientId" to client_id.selectedItem.toString(),
+                        "clientId" to cliendId,
                         "username" to username.text.toString(),
                         "password" to password.text.toString()
                     )
