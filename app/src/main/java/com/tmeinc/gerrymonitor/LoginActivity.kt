@@ -11,9 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tmeinc.gerrymonitor.GerryMainActivity
 import com.tmeinc.gerrymonitor.GerryService
 import com.tmeinc.gerrymonitor.R
-import com.tmeinc.gerrymonitor.objGetLeaf
 import org.json.JSONObject
-
 
 class LoginActivity : AppCompatActivity() {
 
@@ -38,7 +36,7 @@ class LoginActivity : AppCompatActivity() {
         var sel = 0
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item)
         if (GerryService.instance != null) {
-            val cl = objGetLeaf(GerryService.gerryClient, "clients")
+            val cl = GerryService.gerryClient["clients"]
             if (cl is JSONObject) {
                 for (id in cl.keys()) {
                     adapter.add(id)

@@ -25,52 +25,34 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         const val ALERT_LIST = "alerts"
     }
 
-    class EventItem(val event: Map<*, *>) : Comparable<EventItem> {
+    class EventItem(val mdu: String, event: Any?) : Comparable<EventItem> {
 
-        val mdu = objGetLeafString(event, "mdu")
-        val ts = objGetLeafLong(event, "ts")
-        val room = objGetLeafString(event, "room")
-        val type = objGetLeafInt(event, "type")
-        val path = objGetLeafString(event, "path")
+        val ts = event.getLeafLong("ts")
+        val room = event.getLeafString("room")
+        val type = event.getLeafInt("type")
+        val path = event.getLeafString("path")
+
+        private val gerryUnit
+            get() = synchronized(GerryService.gerryMDUs) {
+                GerryService.gerryMDUs[mdu]
+            }
 
         val loc: String
-            get() {
-                val gerryUnit =
-                    synchronized(GerryService.gerryMDUs) {
-                        GerryService.gerryMDUs[mdu]
-                    }
-                return objGetLeafString(gerryUnit, "info/loc")
-            }
+            get() = gerryUnit.getLeafString("info/loc")
 
         val unit: String
-            get() {
-                val gerryUnit =
-                    synchronized(GerryService.gerryMDUs) {
-                        GerryService.gerryMDUs[mdu]
-                    }
-                return objGetLeafString(gerryUnit, "info/unit")
-            }
+            get() = gerryUnit.getLeafString("info/unit")
 
         val resident: String
-            get() {
-                val gerryUnit =
-                    synchronized(GerryService.gerryMDUs) {
-                        GerryService.gerryMDUs[mdu]
-                    }
-                val res = objGetLeafArray(gerryUnit, "info/residents/name")
-                return res.joinToString {
-                    it.toString()
-                }
+            get() = gerryUnit.getLeafArray("info/residents/name").joinToString {
+                it.toString()
             }
 
         val time: String
-            get() {
-                val date = Date( 1000L * ts)
-                return SimpleDateFormat.getDateTimeInstance(
-                    DateFormat.DEFAULT,
-                    DateFormat.DEFAULT
-                ).format(date)
-            }
+            get() = SimpleDateFormat.getDateTimeInstance(
+                DateFormat.DEFAULT,
+                DateFormat.DEFAULT
+            ).format(Date(1000L * ts))
 
         override fun compareTo(other: EventItem): Int {
             var comp = ts.compareTo(other.ts)
@@ -82,6 +64,8 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
     }
 
+    private var eventListChanged = false
+    private val eventList = mutableListOf<EventItem>()
     var displayList = listOf<EventItem>()   // display alert list
 
     inner class EventListAdapter() : RecyclerView.Adapter<EventListAdapter.ViewHolder>() {
@@ -119,47 +103,68 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         }
     }
 
-    val displayAdapter = EventListAdapter()
+    private val displayAdapter = EventListAdapter()
 
-    fun listCB(events: List<Any?>) {
-        val eventList = mutableListOf<EventItem>()
-        for (e in events) {
-            if (e is Map<*, *>)
-                eventList.add(
-                    EventItem(e)
-                )
+    private fun cbUpdateList(mdu: String, list: List<Any?>) {
+
+        if (list.isNotEmpty()) {
+            for (e in list) {
+                eventList.add(EventItem(mdu, e))
+            }
+            eventListChanged = true
         }
+
+    }
+
+    private fun cbCompleteList() {
         // do filter and sort here
-        eventList.sortDescending()
+        if (eventListChanged) {
+            // sort
+            eventList.sortDescending()
 
-        /*
-        eventList.sortWith(Comparator<EventItem> { o1, o2 ->
-            (o2.tm.toLong() - o1.tm.toLong()).toInt()
-        })
-         */
+            // fileter?
 
-        displayList = eventList.toList()
-        displayAdapter.notifyDataSetChanged()
+
+            displayList = eventList.toList()
+            displayAdapter.notifyDataSetChanged()
+            eventListChanged = false
+        }
     }
 
     fun updateList() {
-
-        var getListCommand = GerryMsg.CLIENT_GET_EVENTS
-        if (type == ALERT_LIST) {
-            getListCommand = GerryMsg.CLIENT_GET_ALERTS
+        var keys = synchronized(GerryService.gerryMDUs) {
+            GerryService.gerryMDUs.keys
         }
-        val obj = mapOf(
-            "days" to 30,
-            "command" to getListCommand,
-            "callback" to { list: List<Any?> ->
-                listCB(list)
+        if (keys.isNotEmpty()) {
+            var getListCommand = GerryMsg.CLIENT_GET_EVENTS
+            if (type == ALERT_LIST) {
+                getListCommand = GerryMsg.CLIENT_GET_ALERTS
             }
-        )
-        GerryService.instance
-            ?.gerryHandler
-            ?.obtainMessage(GerryService.MSG_GERRY_GET_EVENTS, obj)
-            ?.sendToTarget()
 
+            val days = 30       // how many days to get event?
+            val now = System.currentTimeMillis() / 1000
+            var start = if (eventList.isNotEmpty()) {
+                eventList[0].ts + 1
+            } else {
+                now - days * 24 * 3600
+            }
+            val obj = mapOf(
+                "mduSet" to keys,
+                "start" to start,
+                "end" to (now + 24 * 3600),
+                "command" to getListCommand,
+                "cbUpdateList" to { mdu: String, list: List<Any?> ->
+                    cbUpdateList(mdu, list)
+                },
+                "cbCompleteList" to {
+                    cbCompleteList()
+                }
+            )
+            GerryService.instance
+                ?.gerryHandler
+                ?.obtainMessage(GerryService.MSG_GERRY_GET_EVENTS, obj)
+                ?.sendToTarget()
+        }
     }
 
     override fun onCreateView(

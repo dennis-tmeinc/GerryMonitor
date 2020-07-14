@@ -21,26 +21,14 @@ import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 class GerryService : Service() {
 
     // all singleton var
     companion object {
-        var gerryRun = 0
-        var instance: GerryService? = null
-        var gerryClient = JSONObject()
-        var clientID = ""
 
-        // list of gerry mdu
-        val gerryMDUs = mutableMapOf<String, Any>()
-        val gerryAckQueue =
-            ConcurrentLinkedQueue<GerryMsg>()           // for ack of client commands
-
-        const val serviceName = "gerryService"
-        const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
-        
         const val RUN_STOP = 0                  // not running
         const val RUN_START = 1                 // starting service
         const val RUN_USERLOGIN = 2             // require use login screen
@@ -64,6 +52,19 @@ class GerryService : Service() {
         const val MSG_GERRY_READ_FILE1 = 1013       // read through http file service
 
         const val GERRY_KEEP_ALIVE_TIME = 600000L       // every 10m
+
+        const val serviceName = "gerryService"
+        const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
+
+        var gerryRun = RUN_STOP
+        var instance: GerryService? = null
+        var gerryClient = emptyMap<String, Any>()
+        var clientID = ""
+
+        // list of gerry mdu
+        val gerryMDUs = mutableMapOf<String, Any>()
+        val gerryAckQueue =
+            LinkedBlockingQueue<GerryMsg>()           // for ack of client commands
     }
 
     var username = ""
@@ -76,6 +77,7 @@ class GerryService : Service() {
 
     // gerry receiving thread
     val readThread = Thread {
+        Thread.currentThread().name = "GerryReadThread"
         // gerry reading thread
         while (gerryRun > 0) {
             while (socket.isConnected) {
@@ -86,50 +88,45 @@ class GerryService : Service() {
                             when (msg.command) {
                                 GerryMsg.MDU_POSE_DATA -> {
                                     gerryPose(msg)
-                                    // do I need ack?
+                                    // ack
                                     msg.ack = GerryMsg.ACK_SUCCESS
                                     msg.setData()
-                                    socket.sendGerryMsg(msg)
                                 }
                                 GerryMsg.MDU_STATUS_DATA -> {
                                     gerryStatus(msg)
-                                    // do I need ack?
+                                    // ack
                                     msg.ack = GerryMsg.ACK_SUCCESS
                                     msg.setData()
-                                    socket.sendGerryMsg(msg)
                                 }
                                 GerryMsg.MDU_EVENT_DATA -> {
                                     gerryEvent(msg)
-                                    // do I need ack?
+                                    // ack
                                     msg.ack = GerryMsg.ACK_SUCCESS
                                     msg.setData()
-                                    socket.sendGerryMsg(msg)
                                 }
                                 GerryMsg.NOTIFY_ALERT -> {
                                     gerryAlert(msg)
-                                    // do I need ack?
+                                    // ack
                                     msg.ack = GerryMsg.ACK_SUCCESS
                                     msg.setData()
-                                    socket.sendGerryMsg(msg)
                                 }
                                 GerryMsg.CLIENT_KEEPALIVE -> {
                                     // keep alive echo
                                     msg.ack = GerryMsg.ACK_SUCCESS
-                                    socket.sendGerryMsg(msg)
                                 }
                                 else -> {
                                     // response, unknown cmd
                                     msg.ack = GerryMsg.ACK_FAIL
                                     msg.reason = GerryMsg.REASON_UNKNOWN_COMMAND
                                     msg.setData()
-                                    socket.sendGerryMsg(msg)
                                 }
                             }
-                        } else if (msg.ack > 0)
+                            socket.sendGerryMsg(msg)
+                        } else if (msg.ack > 0) {
                             gerryAckQueue.offer(msg)
-
+                        }
                     } else {
-                        if( socket.isOpen )
+                        if (socket.isOpen)
                             socket.close()
                         break
                     }
@@ -256,16 +253,16 @@ class GerryService : Service() {
     // MDU_STATUS_DATA (205)
     fun gerryStatus(msg: GerryMsg) {
         val xmlData = msg.dataObj()
-        val mduId = objGetLeafString(xmlData, "mclient/mdu")
+        val mduId = xmlData.getLeafString("mclient/mdu")
         synchronized(gerryMDUs) {
             val mdu = gerryMDUs[mduId]
             if (mdu is MutableMap<*, *>) {
                 @Suppress("UNCHECKED_CAST")
                 (mdu as MutableMap<String, Any?>).apply {
-                    this["status_mdup"] = objGetLeaf(xmlData, "mclient/mdup")
+                    this["status_mdup"] = xmlData.getLeaf("mclient/mdup")
 
                     // fake data for debugging
-                    this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
+                    // this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
 
                     val cb = this["status_callback"]
                     if (this["status"] == "Run" && cb != null) {
@@ -282,12 +279,12 @@ class GerryService : Service() {
     // MDU_POSE_DATA (202)
     fun gerryPose(msg: GerryMsg) {
         val xmlData = msg.dataObj()
-        val mdu = objGetLeafString(xmlData, "mclient/mdu")
-        val camera = objGetLeafInt(xmlData, "mclient/mdup/cam")
-        val pose = objGetLeafArray(xmlData, "mclient/mdup/poses/pose")
+        val mdu = xmlData.getLeafString("mclient/mdu")
+        val camera = xmlData.getLeafInt("mclient/mdup/cam")
+        val pose = xmlData.getLeafArray("mclient/mdup/poses/pose")
         synchronized(gerryMDUs) {
-            val live = objGetLeafString(gerryMDUs, "${mdu}/pose/${camera}/live")
-            val cb = objGetLeaf(gerryMDUs, "${mdu}/pose/${camera}/callback")
+            val live = gerryMDUs.getLeafString("${mdu}/pose/${camera}/live")
+            val cb = gerryMDUs.getLeaf("${mdu}/pose/${camera}/callback")
             if (live == "Run" && cb != null) {
                 mainHandler.post {
                     (cb as (List<Any?>?) -> Unit)(pose)
@@ -299,15 +296,16 @@ class GerryService : Service() {
     // NOTIFY_ALERT (13)
     fun gerryAlert(msg: GerryMsg) {
         val xmlData = msg.dataObj()
-        val mduId = objGetLeafString(xmlData, "mclient/ai/mdu")
-        val eventType = objGetLeafInt(xmlData, "mclient/ai/type")
-        val room = objGetLeafString(xmlData, "mclient/ai/room")
-        val tm = objGetLeafString(xmlData, "mclient/ai/tm")
+        val mduId = xmlData.getLeafString("mclient/ai/mdu")
+        val eventType = xmlData.getLeafInt("mclient/ai/type")
+        val room = xmlData.getLeafString("mclient/ai/room")
+        val tm = xmlData.getLeafString("mclient/ai/tm")
         synchronized(gerryMDUs) {
             val mdu = gerryMDUs[mduId]
             if (mdu is MutableMap<*, *>) {
+                @Suppress("UNCHECKED_CAST")
                 (mdu as MutableMap<String, Any?>).apply {
-                    this["alert_ai"] = objGetLeaf(xmlData, "mclient/ai")
+                    this["alert_ai"] = xmlData.getLeaf("mclient/ai")
                     // show notification
                     if (eventType >= 0 && eventType < event_icons.size) {
                         showNotification(
@@ -324,12 +322,13 @@ class GerryService : Service() {
     // MDU_EVENT_DATA (206), should never happen as in Marcus_Client Document from Tongrui, use gerryAlert()
     fun gerryEvent(msg: GerryMsg) {
         val xmlData = msg.dataObj()
-        val mduId = objGetLeafString(xmlData, "mclient/mdu")
+        val mduId = xmlData.getLeafString("mclient/mdu")
         synchronized(gerryMDUs) {
             val mdu = gerryMDUs[mduId]
             if (mdu is MutableMap<*, *>) {
+                @Suppress("UNCHECKED_CAST")
                 (mdu as MutableMap<String, Any?>).apply {
-                    this["event_mdup"] = objGetLeaf(xmlData, "mclient/mdup")
+                    this["event_mdup"] = xmlData.getLeaf("mclient/mdup")
                 }
             }
         }
@@ -337,7 +336,6 @@ class GerryService : Service() {
 
     // Handler that receives messages from the thread
     private inner class gerryServiceHandler(looper: Looper) : Handler(looper) {
-
         override fun handleMessage(msg: Message) {
             if (gerryRun > 0) {
                 when (msg.what) {
@@ -350,7 +348,7 @@ class GerryService : Service() {
                         for (loop in 0..10) {
                             val jsonStr = getHttpContent(gerryClientUri)
                             if (jsonStr.length > 50) {
-                                gerryClient = JSONObject(jsonStr)
+                                gerryClient = JSONObject(jsonStr).toMap()
                                 // save client settings
                                 mainHandler.post {
                                     // save login info
@@ -383,9 +381,9 @@ class GerryService : Service() {
                             gerryRun = RUN_CONNECT
 
                         if (msg.obj != null) {
-                            clientID = objGetLeafString(msg.obj, "clientId")
-                            username = objGetLeafString(msg.obj, "username")
-                            password = objGetLeafString(msg.obj, "password")
+                            clientID = msg.obj.getLeafString("clientId")
+                            username = msg.obj.getLeafString("username")
+                            password = msg.obj.getLeafString("password")
                         }
 
                         if (username.isBlank()) {
@@ -394,9 +392,9 @@ class GerryService : Service() {
                         }
 
                         // get server/port from gerryClient
-                        val server = objGetLeafString(gerryClient, "clients/${clientID}/server")
-                        val port = objGetLeafInt(gerryClient, "clients/${clientID}/port")
-                        val client = objGetLeafString(gerryClient, "clients/${clientID}/clientid")
+                        val server = gerryClient.getLeafString("clients/${clientID}/server")
+                        val port = gerryClient.getLeafInt("clients/${clientID}/port")
+                        val client = gerryClient.getLeafString("clients/${clientID}/clientid")
 
                         if (server.isBlank() || port == 0) {
                             gerryRun = RUN_USERLOGIN        // wrong clientId
@@ -434,8 +432,8 @@ class GerryService : Service() {
                         )
                         if (ack != null) {
                             val ackData = ack.dataObj()
-                            val challenge = objGetLeafString(ackData, "mclient/challenge")
-                            val salt = objGetLeafString(ackData, "mclient/salt")
+                            val challenge = ackData.getLeafString("mclient/challenge")
+                            val salt = ackData.getLeafString("mclient/salt")
                             // digest md5
                             val md = MessageDigest.getInstance("MD5")
                             val m1 = "${username}:${salt}:${password}"
@@ -479,9 +477,11 @@ class GerryService : Service() {
                             gerryHandler?.sendEmptyMessage(MSG_GERRY_GET_MDU_LIST)
 
                             //val obj = mapOf(
-                            //    "filename" to "d:\\Marcus1\\alertPose\\00012E795D63\\pos_20200625153533_room1.gen"
+                            //    "filename" to
+                            //            "d:\\Marcus1\\alertPose\\00012E795D63\\pos_20200625153504_room1.gen"
                             //)
                             //gerryHandler?.obtainMessage(MSG_GERRY_READ_FILE1, obj)?.sendToTarget()
+
                             mainHandler.post {
                                 Toast.makeText(
                                     this@GerryService,
@@ -518,7 +518,7 @@ class GerryService : Service() {
                     }
 
                     MSG_GERRY_KEEP_ALIVE -> {
-                        if ( !socket.isConnected || socket.gerryCmd(GerryMsg.CLIENT_KEEPALIVE) == null) {
+                        if (!socket.isConnected || socket.gerryCmd(GerryMsg.CLIENT_KEEPALIVE) == null) {
                             // connection failed, try reconnect
                             gerryRun = RUN_CONNECT
                             gerryHandler?.sendEmptyMessage(MSG_GERRY_LOGIN)
@@ -533,14 +533,15 @@ class GerryService : Service() {
                     MSG_GERRY_GET_MDU_LIST -> {
                         val ack = socket.gerryCmd(GerryMsg.CLIENT_GET_LOC_UNIT_LIST)
                         if (ack != null) {
-                            val l = objGetLeafArray(ack.dataObj(), "mclient/item")
+                            val l = ack.dataObj().getLeafArray("mclient/item")
                             synchronized(gerryMDUs) {
                                 for (m in l) {
-                                    val mdu = objGetLeaf(m, "mdu")
+                                    val mdu = m.getLeaf("mdu")
                                     if (mdu is String) {
                                         if (!gerryMDUs.containsKey(mdu)) {
                                             gerryMDUs[mdu] = mutableMapOf<String, Any?>()
                                         }
+                                        @Suppress("UNCHECKED_CAST")
                                         (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
                                             this["info"] = m
                                         }
@@ -549,7 +550,7 @@ class GerryService : Service() {
                             }
 
                             // set RUN_RUN here
-                            if (gerryRun > 0 && gerryRun != RUN_RUN)
+                            if (gerryRun > 0)
                                 gerryRun = RUN_RUN
 
                             gerryHandler?.sendEmptyMessage(MSG_GERRY_EVENT_START)         // start receiving alerts
@@ -573,9 +574,11 @@ class GerryService : Service() {
                                     )
                                 ) != null
                             ) {
+                                @Suppress("UNCHECKED_CAST")
                                 (gerryMDUs[mdu] as MutableMap<String, Any?>)["event"] =
                                     "Run"  // event always running!
                             } else {
+                                @Suppress("UNCHECKED_CAST")
                                 (gerryMDUs[mdu] as MutableMap<String, Any?>)["event"] = "Failed"
                             }
                         }
@@ -584,7 +587,7 @@ class GerryService : Service() {
 
                     MSG_GERRY_STATUS_START -> {
                         if (msg.obj is Map<*, *>) {
-                            val mdu = objGetLeafString(msg.obj, "mdu")
+                            val mdu = msg.obj.getLeafString("mdu")
                             if (gerryMDUs.containsKey(mdu)) {
                                 if (socket.gerryCmd(
                                         GerryMsg.CLIENT_SUBJECT_STATUS_START, mapOf(
@@ -606,10 +609,10 @@ class GerryService : Service() {
                                         (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
                                             this["status"] = "Run"
                                             this["status_callback"] =
-                                                objGetLeaf(msg.obj, "callback")
+                                                msg.obj.getLeaf("callback")
 
                                             // fake data for debugging
-                                            this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
+                                            // this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
 
                                             val cb = this["status_callback"]
                                             if (this["status"] == "Run" && cb != null) {
@@ -618,7 +621,6 @@ class GerryService : Service() {
                                                     (cb as () -> Unit)()
                                                 }
                                             }
-
 
                                         }
                                     }
@@ -630,7 +632,7 @@ class GerryService : Service() {
                     MSG_GERRY_STATUS_STOP -> {
                         // stop all status reports, never send CLIENT_SUBJECT_STATUS_STOP
                         if (msg.obj is Map<*, *>) {
-                            val mdu = objGetLeaf(msg.obj, "mdu")
+                            val mdu = msg.obj.getLeaf("mdu")
                             if (mdu is String && gerryMDUs.containsKey(mdu)) {
                                 synchronized(gerryMDUs) {
                                     (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
@@ -644,9 +646,9 @@ class GerryService : Service() {
 
                     MSG_GERRY_LIVE_START -> {
                         if (msg.obj is Map<*, *>) {
-                            val mdu = objGetLeafString(msg.obj, "mdu")
+                            val mdu = msg.obj.getLeafString("mdu")
                             if (gerryMDUs.containsKey(mdu)) {
-                                val camera = objGetLeafInt(msg.obj, "camera")
+                                val camera = msg.obj.getLeafInt("camera")
                                 val pose = synchronized(gerryMDUs) {
                                     (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
                                         if (!this.containsKey("pose"))
@@ -667,7 +669,7 @@ class GerryService : Service() {
                                     pose.apply {
                                         this["$camera"] = mapOf(
                                             "live" to "Run",
-                                            "callback" to objGetLeaf(msg.obj, "callback")
+                                            "callback" to msg.obj.getLeaf("callback")
                                         )
                                     }
                                 }
@@ -677,9 +679,9 @@ class GerryService : Service() {
 
                     MSG_GERRY_LIVE_STOP -> {
                         if (msg.obj is Map<*, *>) {
-                            val mdu = objGetLeafString(msg.obj, "mdu")
+                            val mdu = msg.obj.getLeafString("mdu")
                             if (gerryMDUs.containsKey(mdu)) {
-                                val camera = objGetLeafInt(msg.obj, "camera")
+                                val camera = msg.obj.getLeafInt("camera")
                                 val pose = synchronized(gerryMDUs) {
                                     (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
                                         if (!this.containsKey("pose"))
@@ -702,57 +704,53 @@ class GerryService : Service() {
 
                     MSG_GERRY_GET_EVENTS -> {
                         if (msg.obj is Map<*, *>) {
-                            val days =
-                                objGetLeafInt(msg.obj, "days")    // how may days to get events
-                            /*
-                            val cal = Calendar.getInstance()
-                            cal.add(Calendar.DAY_OF_MONTH, -days)
-                            val start = SimpleDateFormat("yyyyMMddHHmmss").format(cal.time)
-                             */
-                            val now = System.currentTimeMillis() / 1000
-                            val start = now - days * 24 * 3600
-                            val eventList = mutableListOf<Any?>()
-                            for (mdu in gerryMDUs.keys) {
-                                var cmd = objGetLeafInt(msg.obj, "command")
-                                if (cmd != GerryMsg.CLIENT_GET_ALERTS)
-                                    cmd = GerryMsg.CLIENT_GET_EVENTS
-                                val ack = socket.gerryCmd(
-                                    cmd,
-                                    mapOf(
-                                        "mclient" to mapOf(
-                                            "mdu" to mdu,
-                                            "start" to start,
-                                            "end" to (now+7200)
+                            var cmd = msg.obj.getLeafInt("command")
+                            if (cmd != GerryMsg.CLIENT_GET_ALERTS)
+                                cmd = GerryMsg.CLIENT_GET_EVENTS
+                            val cbUpdateList = msg.obj.getLeaf("cbUpdateList")
+                            val cbCompleteList = msg.obj.getLeaf("cbCompleteList")
+
+                            val keys = msg.obj.getLeaf("mduSet")
+                            if (keys is Collection<*>)
+                                for (mdu in keys) {
+                                    if (mdu is String) {
+                                        val ack = socket.gerryCmd(
+                                            cmd,
+                                            mapOf(
+                                                "mclient" to mapOf(
+                                                    "mdu" to mdu,
+                                                    "start" to msg.obj.getLeafLong("start"),
+                                                    "end" to msg.obj.getLeafLong("end")
+                                                )
+                                            )
                                         )
-                                    )
-                                )
-                                if (ack != null) {
-                                    var mlist = mutableListOf<Any?>()
-                                    var l = objGetLeafArray(ack.dataObj(), "mclient/ei")
-                                    mlist.addAll(l)
-                                    l = objGetLeafArray(ack.dataObj(), "mclient/ai")
-                                    mlist.addAll(l)
-                                    mlist.forEach {
-                                        if (it is Map<*, *>) {
-                                            val i = it.toMutableMap()
-                                            i["mdu"] = mdu
-                                            eventList.add(i)
+                                        if (ack != null) {
+                                            var eList = mutableListOf<Any?>()
+                                            val obj = ack.dataObj()
+                                            eList.addAll(obj.getLeafArray("mclient/ai"))
+                                            eList.addAll(obj.getLeafArray("mclient/ei"))
+                                            if (cbUpdateList != null) {
+                                                mainHandler.post {
+                                                    (cbUpdateList as (String, List<*>) -> Unit)(
+                                                        mdu,
+                                                        eList
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            // call back
-                            val callback = objGetLeaf(msg.obj, "callback")
-                            if (callback != null) {
+                            if (cbCompleteList != null) {
                                 mainHandler.post {
-                                    (callback as (l: List<Any?>) -> Unit)(eventList)
+                                    @Suppress("UNCHECKED_CAST")
+                                    (cbCompleteList as () -> Unit)()
                                 }
                             }
                         }
                     }
 
                     MSG_GERRY_READ_FILE1 -> {
-                        val filename = objGetLeaf(msg.obj, "filename")
+                        val filename = msg.obj.getLeaf("filename")
                         val buf = ByteBuffer.allocate(10000000)
                         if (filename is String) {
                             var xmlObj = mapOf(
@@ -788,7 +786,7 @@ class GerryService : Service() {
                     }
 
                     MSG_GERRY_READ_FILE -> {
-                        val filename = objGetLeaf(msg.obj, "filename")
+                        val filename = msg.obj.getLeaf("filename")
                         if (filename is String) {
                             val buf = gerryGetFile(filename)
                             val file = File(getExternalFilesDir(null), "readfile1.gen")
@@ -815,7 +813,8 @@ class GerryService : Service() {
         override fun doWork(): Result {
             if (instance?.gerryHandler != null) {
                 instance
-                    ?.gerryHandler?.sendEmptyMessage(MSG_GERRY_KEEP_ALIVE)
+                    ?.gerryHandler
+                    ?.sendEmptyMessage(MSG_GERRY_KEEP_ALIVE)
             } else {
                 // GerryService killed? try start it
                 applicationContext.startService(
@@ -860,7 +859,7 @@ class GerryService : Service() {
             username = it.getString("username", "")!!
             password = it.getString("password", "")!!
             val gerryClientJSON = it.getString("gerryClient", "{}")!!
-            gerryClient = JSONObject(gerryClientJSON)
+            gerryClient = JSONObject(gerryClientJSON).toMap()
 
             val versionCode = it.getInt("versionCode", 0)
             val vInfo = packageManager.getPackageInfo(packageName, 0) as PackageInfo
@@ -926,7 +925,7 @@ class GerryService : Service() {
     }
 
     override fun onDestroy() {
-        gerryRun = 0
+        gerryRun = RUN_STOP
         if (readThread.isAlive)
             readThread.interrupt()
         instance = null
@@ -939,36 +938,35 @@ class GerryService : Service() {
 // Gerry http services
 
 // return content in ByteBuffer form pos to limit
-fun gerryService(req: String): ByteBuffer {
+fun gerryFileService(req: String): ByteBuffer {
     val fileService =
-        GerryService.gerryClient.getLeaf("clients/${GerryService.clientID}/fileservice")
-    if (fileService is String) {
-        try {
-            val rb = ByteBuffer.allocate(200000000)     // 200M buffer?
-            val uri = URI("${fileService}?${req}")
-            val c = uri.toURL().openConnection()
-            val s = c.getInputStream()
-            while (rb.hasRemaining()) {
-                val r = s.read()
-                if (r >= 0) {
-                    rb.put(r.toByte())
-                } else {
-                    break
-                }
+        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/fileservice")
+    try {
+        val rb = ByteBuffer.allocate(200000000)     // 200M buffer?
+        val uri = URI("${fileService}?${req}")
+        val c = uri.toURL().openConnection()
+        val s = c.getInputStream()
+        while (rb.hasRemaining()) {
+            val r = s.read()
+            if (r >= 0) {
+                rb.put(r.toByte())
+            } else {
+                break
             }
-            s.close()
-            rb.flip()
-            return rb
-        } catch (e: Exception) {
-            e.toString()
         }
+        s.close()
+        rb.flip()
+        return rb
+    } catch (e: Exception) {
+        e.toString()
     }
+
     return ByteBuffer.allocate(0)
 }
 
 fun gerryGetFile(path: String): ByteBuffer {
     val enc = URLEncoder.encode(path, "UTF-8")
-    return gerryService("c=r&n=$enc")
+    return gerryFileService("c=r&n=$enc")
 }
 
 fun gerryDB(sql: String): JSONObject {

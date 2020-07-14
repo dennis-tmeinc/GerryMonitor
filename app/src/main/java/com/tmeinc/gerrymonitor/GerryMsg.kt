@@ -1,11 +1,11 @@
 package com.tmeinc.gerrymonitor
 
 import android.os.SystemClock
-import org.json.JSONObject
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.SocketChannel
+import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 
 /** defined by Tongrui@TME
@@ -66,73 +66,83 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
 
+        // msg structure fields offset
+        const val offset_id = 0
+        const val offset_id1 = 1
+        const val offset_version = 2
+        const val offset_command = 3
+        const val offset_ack = 4
+        const val offset_reason = 5
+        const val offset_wData = 6
+        const val offset_qwData = 8
+        const val offset_dwData = 16
+        const val offset_ext_crc = 20
+        const val offset_extSize = 24
+        const val offset_crc = 28
+        const val msg_size = 32
     }
 
-    val mssMsg = ByteBuffer.allocate(32)
-    var xData = ByteBuffer.allocate(0)
+    val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
+    var xData: ByteBuffer = ByteBuffer.allocate(0)
 
     init {
         mssMsg.order(ByteOrder.LITTLE_ENDIAN)
-        mssMsg.put(0, 'M'.toByte())
-        mssMsg.put(1, 'S'.toByte())
-        mssMsg.put(2, 1.toByte())           // version
-        mssMsg.put(3, cmd.toByte())         // cmd
-        mssMsg.put(4, 0.toByte())           // request, ask = 0
-        mssMsg.putInt(24, 0)          // ext_datasize
+        mssMsg.put(offset_id, 'M'.toByte())
+        mssMsg.put(offset_id1, 'S'.toByte())
+        mssMsg.put(offset_version, 1.toByte())           // version
+        mssMsg.put(offset_command, cmd.toByte())         // cmd
+        mssMsg.put(offset_ack, 0.toByte())           // request, ask = 0
+        mssMsg.putInt(offset_extSize, 0)          // ext_datasize
     }
 
     constructor(cmd: Int, xml: String?) : this(cmd) {
         setData(xml)
     }
 
-    constructor(cmd: Int, xmlData: Map<*, *>) : this(cmd) {
-        setData(xmlData)
-    }
-
     var command: Int
-        get() = mssMsg[3].toInt() and 0xFF
+        get() = mssMsg[offset_command].toInt() and 0xFF
         set(v) {
-            mssMsg.put(3, v.toByte())
+            mssMsg.put(offset_command, v.toByte())
         }
 
     var ack: Int
-        get() = mssMsg[4].toInt() and 0xFF
+        get() = mssMsg[offset_ack].toInt() and 0xFF
         set(v) {
-            mssMsg.put(4, v.toByte())
+            mssMsg.put(offset_ack, v.toByte())
         }
 
     var reason: Int
-        get() = mssMsg[5].toInt() and 0xFF
+        get() = mssMsg[offset_reason].toInt() and 0xFF
         set(v) {
-            mssMsg.put(5, v.toByte())
+            mssMsg.put(offset_reason, v.toByte())
         }
 
     var wData: Short
-        get() = mssMsg.getShort(6)
+        get() = mssMsg.getShort(offset_wData)
         set(v) {
-            mssMsg.putShort(6, v)
+            mssMsg.putShort(offset_wData, v)
         }
 
     var qwData: Long
-        get() = mssMsg.getLong(8)
+        get() = mssMsg.getLong(offset_qwData)
         set(v) {
-            mssMsg.putLong(8, v)
+            mssMsg.putLong(offset_qwData, v)
         }
 
     var dwData: Int
-        get() = mssMsg.getInt(16)
+        get() = mssMsg.getInt(offset_dwData)
         set(v) {
-            mssMsg.putInt(16, v)
+            mssMsg.putInt(offset_dwData, v)
         }
 
-    var dataSize: Int
-        get() = mssMsg.getInt(24)
+    var extSize: Int
+        get() = mssMsg.getInt(offset_extSize)
         set(v) {
-            mssMsg.putInt(24, v)
+            mssMsg.putInt(offset_extSize, v)
         }
 
     val isValid
-        get() = mssMsg[0] == 'M'.toByte() && mssMsg[1] == 'S'.toByte()
+        get() = mssMsg[offset_id] == 'M'.toByte() && mssMsg[offset_id1] == 'S'.toByte()
 
     fun setData(data: String? = null) {
         if (data != null && data.isNotBlank()) {
@@ -140,32 +150,21 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         } else {
             xData.limit(0)
         }
-        dataSize = xData.limit()
+        extSize = xData.limit()
     }
 
     fun setData(data: Map<*, *>) {
-        setData(objToXml(data))
+        setData(data.toXml())
     }
 
-    fun getDataString(): String {
-        return String(xData.array(), xData.arrayOffset(), xData.limit())
-    }
+    // XML data as string
+    private val dataStr: String
+        get() =
+            String(xData.array(), xData.arrayOffset(), xData.limit())
 
-    // convert XML data to obj (Map)
-    fun dataObj(): Map<*, *> {
-        if (xData.limit() > 0) {
-            return xmlToMap(getDataString())
-        }
-        return emptyMap<String, Any>()
-    }
-
-    // convert XML data to obj (Map)
-    fun dataJson(): JSONObject {
-        if (xData.limit() > 0) {
-            val xml = String(xData.array(), xData.arrayOffset(), xData.limit())
-            return xmlToJson(xml)
-        }
-        return JSONObject()
+    // XML data as obj (Map)
+    fun dataObj(): Any {
+        return dataStr.xmlObj()
     }
 
     // generate crc checksum
@@ -173,32 +172,31 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         // calc crc
         val crc = CRC32()
         crc.reset()
-        val xsize = xData.limit()
-        if (xsize > 0) {
-            crc.update(xData.array(), xData.arrayOffset(), xsize)
+
+        val siz = xData.limit()
+        if (siz > 0) {
+            crc.update(xData.array(), xData.arrayOffset(), siz)
         }
-        // ext crc
-        mssMsg.putInt(20, crc.value.toInt())
+        // save ext crc
+        mssMsg.putInt(offset_ext_crc, crc.value.toInt())
 
-        // ext_datasize
-        dataSize = xsize
+        // ext data size
+        extSize = siz
         crc.reset()
-        crc.update(mssMsg.array(), 0, 28)   // exclude crc field itself
-        mssMsg.putInt(28, crc.value.toInt())
+        crc.update(mssMsg.array(), mssMsg.arrayOffset(), offset_crc)   // exclude crc field itself
+        mssMsg.putInt(offset_crc, crc.value.toInt())
     }
-
 }
 
 fun SocketChannel.sendGerryMsg(msg: GerryMsg) {
     if (!isConnected)
         return
 
-    // calc crc
-    msg.crc()
-
-    msg.mssMsg.rewind()
-    msg.xData.rewind()
     try {
+        // calc crc
+        msg.crc()
+        msg.mssMsg.rewind()
+        msg.xData.rewind()
         write(arrayOf(msg.mssMsg, msg.xData))
     } catch (e: IOException) {
         this.close()
@@ -214,7 +212,7 @@ fun SocketChannel.recvGerryMsg(): GerryMsg? {
         return null
     try {
         val msg = GerryMsg()
-        var r : Int
+        var r: Int
         while (msg.mssMsg.hasRemaining()) {
             r = read(msg.mssMsg)
             if (r < 0) {
@@ -225,11 +223,11 @@ fun SocketChannel.recvGerryMsg(): GerryMsg? {
         }
         msg.mssMsg.rewind()
         if (msg.isValid) {
-            if (msg.dataSize < 0 || msg.dataSize > 2000000) {
+            if (msg.extSize < 0 || msg.extSize > 20000000) {
                 return null
             }
-            if (msg.dataSize > 0) {
-                msg.xData = ByteBuffer.allocate(msg.dataSize)
+            if (msg.extSize > 0) {
+                msg.xData = ByteBuffer.allocate(msg.extSize)
                 while (msg.xData.hasRemaining()) {
                     r = read(msg.xData)
                     if (r < 0) {
@@ -249,24 +247,26 @@ fun SocketChannel.recvGerryMsg(): GerryMsg? {
 }
 
 // wait for gerry ACK
-fun SocketChannel.gerryAck(cmd: Int, timeout: Int = 10000): GerryMsg? {
+fun SocketChannel.gerryAck(cmd: Int, timeout: Int = 20000): GerryMsg? {
     // wait for ack, wait up to 10s
     val waitStart = SystemClock.elapsedRealtime()
     while (this.isConnected && SystemClock.elapsedRealtime() - waitStart < timeout) {
-        val ack = GerryService.gerryAckQueue.poll()
-        if (ack == null) {
-            try {
-                Thread.sleep(5)
-            } catch (e: InterruptedException) {
-                // keep interrupted state
-                Thread.currentThread().interrupt()
+        try {
+            val ack = GerryService.gerryAckQueue.poll(10, TimeUnit.SECONDS)
+            if (ack != null) {
+                if (ack.command == cmd) {      // command matched
+                    if (ack.ack == GerryMsg.ACK_SUCCESS) {
+                        return ack
+                    } else
+                        break
+                }
+            } else {
                 break
             }
-        } else if (ack.command == cmd) {      // match my cmd
-            if (ack.ack == GerryMsg.ACK_SUCCESS) {
-                return ack
-            } else
-                break
+        } catch (e: InterruptedException) {
+            // keep interrupted state
+            Thread.currentThread().interrupt()
+            break
         }
     }
     return null
@@ -275,16 +275,15 @@ fun SocketChannel.gerryAck(cmd: Int, timeout: Int = 10000): GerryMsg? {
 fun SocketChannel.gerryCmd(cmd: Int, xmlStr: String? = null): GerryMsg? {
     if (this.isConnected) {
         val msg = GerryMsg(cmd, xmlStr)
-        GerryService.gerryAckQueue.clear()        // clear ack queue
+        GerryService.gerryAckQueue.clear()        // clear ack queue before new command
         sendGerryMsg(msg)
-
         return gerryAck(cmd)
     }
     return null
 }
 
 fun SocketChannel.gerryCmd(cmd: Int, xmlData: Map<*, *>): GerryMsg? {
-    return gerryCmd(cmd, objToXml(xmlData))
+    return gerryCmd(cmd, xmlData.toXml())
 }
 
 // status/event icons

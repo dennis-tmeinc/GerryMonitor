@@ -2,13 +2,12 @@ package com.tmeinc.gerrymonitor
 
 import android.util.Xml
 import org.json.JSONArray
-import org.json.JSONException
-import org.xmlpull.v1.XmlPullParser
 import org.json.JSONObject
-import java.lang.StringBuffer
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlSerializer
 import java.io.StringReader
-import java.lang.Exception
-import kotlin.text.*
+import java.io.StringWriter
+import kotlin.collections.set
 
 private fun XmlPullParser.parseXMLtoJson(): Any {
     var s = ""
@@ -16,18 +15,15 @@ private fun XmlPullParser.parseXMLtoJson(): Any {
     while (next() != XmlPullParser.END_TAG) {
         if (eventType == XmlPullParser.START_TAG) {
             val key = name
-            val v = parseXMLtoJson()
+            val value = parseXMLtoJson()
             if (o.has(key)) {
                 if (o[key] is JSONArray) {
-                    (o[key] as JSONArray).put(v)
+                    (o[key] as JSONArray).put(value)
                 } else {
-                    val a = JSONArray()
-                    a.put(o[key])
-                    a.put(v)
-                    o.put(key, a)
+                    o.put(key, JSONArray().put(o[key]).put(value))
                 }
             } else {
-                o.put(key, v)
+                o.put(key, value)
             }
         } else if (eventType == XmlPullParser.TEXT) {
             if (!isWhitespace)
@@ -52,24 +48,22 @@ fun xmlToJson(xml: String): JSONObject {
         JSONObject()
 }
 
-private fun XmlPullParser.parseXMLtoMap(): Any {
+private fun XmlPullParser.parseXML(): Any {
     var s = ""
     val o = mutableMapOf<String, Any>()
     while (next() != XmlPullParser.END_TAG) {
         if (eventType == XmlPullParser.START_TAG) {
             val tag = name
-            val vt = parseXMLtoMap()
+            val value = parseXML()
             if (o.containsKey(tag)) {
-                var l = mutableListOf<Any>()
-                if (o[tag] is List<*>) {
-                    l.addAll(o[tag] as List<Any>)
+                if (o[tag] is MutableList<*>) {
+                    @Suppress("UNCHECKED_CAST")
+                    (o[tag] as MutableList<Any>).add(value)
                 } else {
-                    l.add(o[tag]!!)
+                    o[tag] = mutableListOf(o[tag], value)
                 }
-                l.add(vt)
-                o[tag] = l.toList()
             } else {
-                o[tag] = vt
+                o[tag] = value
             }
         } else if (eventType == XmlPullParser.TEXT) {
             if (!isWhitespace)
@@ -81,73 +75,212 @@ private fun XmlPullParser.parseXMLtoMap(): Any {
     return if (o.isEmpty())
         s.trim()
     else
-        o.toMap()
+        o
 }
 
-fun xmlToMap(xml: String): Map<*, *> {
+// get Obj from xml string
+fun String.xmlObj(): Any {
     val parser = Xml.newPullParser()
-    parser.setInput(StringReader(xml))
     return try {
-        val m = parser.parseXMLtoMap()
-        if (m is Map<*, *>)
-            m
-        else
-            emptyMap<String, Any>()
-    }
-    catch (e:Exception){
+        parser.setInput(StringReader(this))
+        parser.parseXML()
+    } catch (e: Exception) {
         emptyMap<String, Any>()
     }
 }
 
-private fun StringBuffer.writeXML(obj: Any, depth: Int = 0, tag: String = "A") {
+private fun StringWriter.writeXML(obj: Any?, depth: Int = 0, tag: String = "i") {
     when (obj) {
-        is JSONObject -> {
-            for (key in obj.keys()) {
-                val o = obj[key]
-                if (o is JSONArray) {
-                    writeXML(obj[key], depth + 1, "$key")
-                } else {
-                    append("<${key}>")
-                    writeXML(obj[key], depth + 1)
-                    append("</${key}>")
-                }
-            }
-        }
         is Map<*, *> -> {
             for (p in obj) {
-                if (p.value is List<*>) {
-                    writeXML(p.value!!, depth + 1, "${p.key}")
+                val value = p.value
+                if (value is List<*>) {
+                    writeXML(value, depth + 1, "${p.key}")
                 } else {
-                    append("<${p.key}>")
-                    writeXML(p.value!!, depth + 1)
-                    append("</${p.key}>")
+                    write("<${p.key}>")
+                    writeXML(value, depth + 1)
+                    write("</${p.key}>")
                 }
             }
         }
-        is JSONArray -> {
-            for (i in 0 until obj.length()) {
-                append("<${tag}>")
-                writeXML(obj[i])
-                append("</${tag}>")
+        is JSONObject -> {
+            for (key in obj.keys()) {
+                val value = obj[key]
+                if (value is JSONArray) {
+                    writeXML(value, depth + 1, key)
+                } else {
+                    write("<$key>")
+                    writeXML(value, depth + 1)
+                    write("</$key>")
+                }
             }
         }
         is List<*> -> {
             for (o in obj) {
-                append("<${tag}>")
-                writeXML(o!!)
-                append("</${tag}>")
+                write("<$tag>")
+                writeXML(o)
+                write("</$tag>")
+            }
+        }
+        is JSONArray -> {
+            for (i in 0 until obj.length()) {
+                write("<$tag>")
+                writeXML(obj[i])
+                write("</$tag>")
             }
         }
         else -> {
-            append("$obj")
+            write("$obj")
         }
     }
 }
 
+private const val xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+
 /* convert Json obj or map to String */
-fun objToXml(obj: Any): String {
-    val buf = StringBuffer()
-    buf.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-    buf.writeXML(obj)
-    return buf.toString()
+// this is my own version without using XmlSerializer
+fun objToXml(obj: Any?): String {
+    return StringWriter().apply {
+        write(xmlHeader)
+        writeXML(obj)
+    }.toString()
+}
+
+private fun XmlSerializer.tagXML(obj: Any?, tag: String) {
+    startTag(null, tag)
+    serializeXML(obj)
+    endTag(null, tag)
+}
+
+private fun XmlSerializer.serializeXML(obj: Any?) {
+    when (obj) {
+        is Map<*, *> -> {
+            for (key in obj.keys) {
+                if (key is String) {
+                    val value = obj[key]
+                    if (value is List<*>) {
+                        for (v in value) {
+                            tagXML(v, key)
+                        }
+                    } else {
+                        tagXML(value, key)
+                    }
+                }
+            }
+        }
+        is JSONObject -> {
+            for (key in obj.keys()) {
+                val value = obj[key]
+                if (value is JSONArray) {
+                    for (i in 0 until value.length()) {
+                        tagXML(value[i], key)
+                    }
+                } else {
+                    tagXML(value, key)
+                }
+            }
+        }
+        else -> {
+            text("$obj")
+        }
+    }
+}
+
+fun Any.toXml(): String {
+    val writer = StringWriter()
+    val serializer = Xml.newSerializer()
+    serializer.setOutput(writer)
+    serializer.startDocument("UTF-8",null)
+    serializer.serializeXML(this)
+    serializer.endDocument()
+    return writer.toString()
+}
+
+// get a leaf obj from Any,  ex: "resourceSets/0/resources/0/address/formattedAddress"
+fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
+    if (this == null)
+        return null
+    val items = leafPath.split(separator, limit = 2)
+    if (items.isNotEmpty()) {
+        val child =
+            try {
+                when (this) {
+                    is Map<*, *> -> {
+                        this[items[0]]
+                    }
+                    is JSONObject -> {
+                        this[items[0]]
+                    }
+                    is List<*> -> {
+                        this[items[0].toInt()]
+                    }
+                    is JSONArray -> {
+                        this[items[0].toInt()]
+                    }
+                    else -> {
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                null
+            }
+        return if (items.size == 1) {
+            child
+        } else child?.getLeaf(items[1], separator)
+    }
+    return null
+}
+
+fun Any?.getLeafArray(leafPath: String, separator: String = "/"): List<Any?> {
+    return when (val leaf = getLeaf(leafPath, separator)) {
+        is List<*> -> {
+            leaf
+        }
+        null -> {
+            emptyList()
+        }
+        else -> {
+            listOf(leaf)
+        }
+    }
+}
+
+fun Any?.getLeafString(leafPath: String, separator: String = "/"): String {
+    return getLeaf(leafPath, separator)?.toString() ?: ""
+}
+
+fun Any?.getLeafInt(leafPath: String, separator: String = "/"): Int {
+    return when (val leaf = getLeaf(leafPath, separator)) {
+        is Number -> {
+            leaf.toInt()
+        }
+        is String -> {
+            try {
+                leaf.toInt()
+            } catch (e: Exception) {
+                0
+            }
+        }
+        else -> {
+            0
+        }
+    }
+}
+
+fun Any?.getLeafLong(leafPath: String, separator: String = "/"): Long {
+    return when (val leaf = getLeaf(leafPath, separator)) {
+        is Number -> {
+            leaf.toLong()
+        }
+        is String -> {
+            try {
+                leaf.toLong()
+            } catch (e: Exception) {
+                0L
+            }
+        }
+        else -> {
+            0L
+        }
+    }
 }

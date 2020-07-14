@@ -1,9 +1,13 @@
 package com.tmeinc.gerrymonitor
 
+import android.content.Context
+import android.graphics.Rect
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -23,23 +27,23 @@ class StatusFragment : Fragment() {
         private val mdu: Any?
             get() =
                 synchronized(GerryService.gerryMDUs) {
-                    objGetLeaf(GerryService.gerryMDUs, mduId)
+                    GerryService.gerryMDUs[mduId]
                 }
 
         val isReady: Boolean
-            get() = objGetLeafString(mdu, "status") == "Run"
+            get() = mdu.getLeafString("status") == "Run"
 
         val location: String
-            get() = objGetLeafString(mdu, "info/loc")
+            get() = mdu.getLeafString("info/loc")
 
         val unit: String
-            get() = objGetLeafString(mdu, "info/unit")
+            get() = mdu.getLeafString("info/unit")
 
         val subs: Int
-            get() = objGetLeafInt(mdu, "status_mdup/unitsub")
+            get() = mdu.getLeafInt("status_mdup/unitsub")
 
         val rooms: List<Any?>
-            get() = objGetLeafArray(mdu, "status_mdup/rooms/room")
+            get() = mdu.getLeafArray("status_mdup/rooms/room")
 
     }
 
@@ -81,9 +85,9 @@ class StatusFragment : Fragment() {
             var tableRow = TableRow(context)
             for (r in us.rooms) {
                 if (r is Map<*, *>) {
-                    val roomName = objGetLeafString(r, "name")
-                    val subList = objGetLeafArray(r, "subs/sub")
-                    for (sub in subList ) {
+                    val roomName = r.getLeafString("name")
+                    val subList = r.getLeafArray("subs/sub")
+                    for (sub in subList) {
                         if (sub is String) {
                             if (subjectCount++ % 2 == 0) {
                                 tableRow = TableRow(context)
@@ -101,17 +105,20 @@ class StatusFragment : Fragment() {
                                 "Room: ${roomName}"
 
                             var si = subSplit[0].toInt()
-                            if( si<0 || si>=status_icons.size)
-                                si=0
+                            if (si < 0 || si >= status_icons.size)
+                                si = 0
                             (statusSub.findViewById(R.id.statusIcon) as ImageView).setImageResource(
                                 status_icons[si]
                             )
-                            (statusSub.findViewById(R.id.statusText) as TextView).setText(status_texts[si])
+                            (statusSub.findViewById(R.id.statusText) as TextView).setText(
+                                status_texts[si]
+                            )
 
                             if (subSplit.count() > 2) {
                                 try {
                                     val datetime =
-                                        SimpleDateFormat("yyyyMMddHHmmss").parse(subSplit[2])?: Date()
+                                        SimpleDateFormat("yyyyMMddHHmmss").parse(subSplit[2])
+                                            ?: Date()
                                     val datetimeStr = SimpleDateFormat.getDateTimeInstance(
                                         DateFormat.DEFAULT,
                                         DateFormat.DEFAULT
@@ -152,17 +159,17 @@ class StatusFragment : Fragment() {
         }
     }
 
-    val statusListAdapter = StatusListAdapter()
+    private val statusListAdapter = StatusListAdapter()
 
     // status update callback
-    fun statusCB(u: UnitStatus) {
+    private fun statusCB(u: UnitStatus) {
         val pos = statusList.indexOf(u)
         if (pos >= 0) {
             statusListAdapter.notifyItemChanged(pos)
         }
     }
 
-    fun startStatus() {
+    private fun startStatus() {
         statusList.clear()
         synchronized(GerryService.gerryMDUs) {
             for (mdu in GerryService.gerryMDUs.keys) {
@@ -170,15 +177,14 @@ class StatusFragment : Fragment() {
             }
         }
         for (s in statusList) {
-            val obj = mapOf(
-                "mdu" to s.mduId,
-                "callback" to {
-                    statusCB(s)
-                }
-            )
             GerryService.instance
                 ?.gerryHandler
-                ?.obtainMessage(GerryService.MSG_GERRY_STATUS_START, obj)
+                ?.obtainMessage(GerryService.MSG_GERRY_STATUS_START, mapOf(
+                    "mdu" to s.mduId,
+                    "callback" to {
+                        statusCB(s)
+                    }
+                ))
                 ?.sendToTarget()
         }
         statusListAdapter.notifyDataSetChanged()
@@ -205,11 +211,26 @@ class StatusFragment : Fragment() {
 
             val itemDecoration = DividerItemDecoration(
                 view.context,
-                layoutManager.getOrientation()
+                layoutManager.orientation
             )
             view.addItemDecoration(itemDecoration)
         }
         return view
+    }
+
+    fun isVisible(v: View): Boolean {
+
+        if (!v.isShown)
+            return false
+
+        val w = v.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val displayMetrics = DisplayMetrics()
+        w.defaultDisplay.getMetrics(displayMetrics)
+
+        var rect = Rect()
+        v.getGlobalVisibleRect(rect)
+        val screen = Rect(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
+        return rect.intersect(screen)
     }
 
     override fun onStart() {
