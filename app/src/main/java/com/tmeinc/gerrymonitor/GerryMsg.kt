@@ -8,8 +8,9 @@ import java.nio.channels.SocketChannel
 import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 
-/** defined by Tongrui@TME
- * // All values in LSB first(little endian: 0x01234567 = 67 45 23 01).
+/** mss_msg protocol structure
+ * defined by Tongrui@TME
+ * All values in LSB first(little endian: 0x01234567 = 67 45 23 01).
  * struct mss_msg
  * {
  *    uint16_t id; // magic number: 'M','S' (id[0]='M',id[1]='S')
@@ -30,6 +31,8 @@ import java.util.zip.CRC32
 class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
 
     companion object {
+
+        // gerry commands
         const val CLIENT_LOGIN_REQUEST = 1
         const val CLIENT_LOGIN_PASSWORD = 2
         const val CLIENT_GET_LOC_UNIT_LIST = 3
@@ -43,13 +46,14 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val CLIENT_CLOSE_READFILE = 11
         const val CLIENT_GET_EVENTS = 12
         const val NOTIFY_ALERT = 13
-
         const val CLIENT_KEEPALIVE = 255
 
+        // mdu message
         const val MDU_POSE_DATA = 202
         const val MDU_STATUS_DATA = 205
         const val MDU_EVENT_DATA = 206
 
+        // error code
         const val REASON_NONE = 0
         const val REASON_UNKNOWN_COMMAND = 1
         const val REASON_AUTH_FAIL = 2
@@ -62,6 +66,7 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val REASON_DUPLICATE_ID = 9
         const val REASON_CHECKSUM = 10
 
+        // ack mode
         const val ACK_NONE = 0
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
@@ -186,104 +191,6 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         crc.update(mssMsg.array(), mssMsg.arrayOffset(), offset_crc)   // exclude crc field itself
         mssMsg.putInt(offset_crc, crc.value.toInt())
     }
-}
-
-fun SocketChannel.sendGerryMsg(msg: GerryMsg) {
-    if (!isConnected)
-        return
-
-    try {
-        // calc crc
-        msg.crc()
-        msg.mssMsg.rewind()
-        msg.xData.rewind()
-        write(arrayOf(msg.mssMsg, msg.xData))
-    } catch (e: IOException) {
-        this.close()
-    } finally {
-        msg.mssMsg.rewind()
-        msg.xData.rewind()
-    }
-
-}
-
-fun SocketChannel.recvGerryMsg(): GerryMsg? {
-    if (!isConnected)
-        return null
-    try {
-        val msg = GerryMsg()
-        var r: Int
-        while (msg.mssMsg.hasRemaining()) {
-            r = read(msg.mssMsg)
-            if (r < 0) {
-                return null     // eof before read
-            } else if (r == 0) {
-                Thread.sleep(10)
-            }
-        }
-        msg.mssMsg.rewind()
-        if (msg.isValid) {
-            if (msg.extSize < 0 || msg.extSize > 20000000) {
-                return null
-            }
-            if (msg.extSize > 0) {
-                msg.xData = ByteBuffer.allocate(msg.extSize)
-                while (msg.xData.hasRemaining()) {
-                    r = read(msg.xData)
-                    if (r < 0) {
-                        return null     // eof before read
-                    } else if (r == 0) {
-                        Thread.sleep(10)
-                    }
-                }
-                msg.xData.rewind()
-            }
-            return msg
-        }
-    } catch (e: Exception) {
-        return null
-    }
-    return null
-}
-
-// wait for gerry ACK
-fun SocketChannel.gerryAck(cmd: Int, timeout: Int = 20000): GerryMsg? {
-    // wait for ack, wait up to 10s
-    val waitStart = SystemClock.elapsedRealtime()
-    while (this.isConnected && SystemClock.elapsedRealtime() - waitStart < timeout) {
-        try {
-            val ack = GerryService.gerryAckQueue.poll(10, TimeUnit.SECONDS)
-            if (ack != null) {
-                if (ack.command == cmd) {      // command matched
-                    if (ack.ack == GerryMsg.ACK_SUCCESS) {
-                        return ack
-                    } else
-                        break
-                }
-            } else {
-                break
-            }
-        } catch (e: InterruptedException) {
-            // keep interrupted state
-            Thread.currentThread().interrupt()
-            break
-        }
-    }
-    return null
-}
-
-fun SocketChannel.gerryCmd(cmd: Int, xmlStr: String? = null): GerryMsg? {
-    if (this.isConnected) {
-        val msg = GerryMsg(cmd, xmlStr)
-        GerryService.gerryAckQueue.clear()        // clear ack queue before new command
-        sendGerryMsg(msg)
-        return gerryAck(cmd)
-    }
-    return null
-}
-
-fun SocketChannel.gerryCmd(cmd: Int, xmlData: Map<*, *>): GerryMsg? {
-    return gerryCmd(cmd, xmlData.toXml())
 }
 
 // status/event icons

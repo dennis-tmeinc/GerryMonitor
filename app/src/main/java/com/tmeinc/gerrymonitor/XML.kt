@@ -186,14 +186,23 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
     }
 }
 
-fun Any.toXml(): String {
+private fun Any.toXml(): String {
     val writer = StringWriter()
-    val serializer = Xml.newSerializer()
-    serializer.setOutput(writer)
-    serializer.startDocument("UTF-8",null)
-    serializer.serializeXML(this)
-    serializer.endDocument()
+    Xml.newSerializer().let {
+        it.setOutput(writer)
+        it.startDocument("UTF-8", null)
+        it.serializeXML(this)
+        it.endDocument()
+    }
     return writer.toString()
+}
+
+fun Map<*, *>.toXml(): String {
+    return (this as Any).toXml()
+}
+
+fun JSONObject.toXml(): String {
+    return (this as Any).toXml()
 }
 
 // get a leaf obj from Any,  ex: "resourceSets/0/resources/0/address/formattedAddress"
@@ -256,7 +265,7 @@ fun Any?.getLeafInt(leafPath: String, separator: String = "/"): Int {
         }
         is String -> {
             try {
-                leaf.toInt()
+                leaf.trim().toInt()
             } catch (e: Exception) {
                 0
             }
@@ -274,13 +283,31 @@ fun Any?.getLeafLong(leafPath: String, separator: String = "/"): Long {
         }
         is String -> {
             try {
-                leaf.toLong()
+                leaf.trim().toLong()
             } catch (e: Exception) {
                 0L
             }
         }
         else -> {
             0L
+        }
+    }
+}
+
+fun Any?.getLeafDouble(leafPath: String, separator: String = "/"): Double {
+    return when (val leaf = getLeaf(leafPath, separator)) {
+        is Number -> {
+            leaf.toDouble()
+        }
+        is String -> {
+            try {
+                leaf.trim().toDouble()
+            } catch (e: Exception) {
+                0.0
+            }
+        }
+        else -> {
+            0.0
         }
     }
 }

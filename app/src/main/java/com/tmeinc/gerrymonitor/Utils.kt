@@ -1,10 +1,13 @@
 package com.tmeinc.gerrymonitor
 
+import android.annotation.SuppressLint
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.URI
-import java.nio.ByteBuffer
+import java.net.URLConnection
+import java.security.cert.X509Certificate
+import javax.net.ssl.*
 
 fun JSONArray.toList(): List<Any> {
     val list = mutableListOf<Any>()
@@ -25,7 +28,7 @@ fun JSONArray.toList(): List<Any> {
             }
         }
     }
-    return list.toList()
+    return list
 }
 
 fun JSONObject.toMap(): Map<String, Any> {
@@ -47,75 +50,81 @@ fun JSONObject.toMap(): Map<String, Any> {
             }
         }
     }
-    return map.toMap()
-}
-
-// get a leaf JsonArray; ex: "0/resources/0/address/formattedAddress"
-fun JSONArray.getLeaf(leaf: String, separator: String = "/"): Any {
-    val items = leaf.split(separator, limit = 2)
-    if (items.count() > 0) {
-        val child: Any =
-            try {
-                this.get(items[0].toInt())
-            } catch (e: JSONException) {
-                return JSONObject.NULL
-            }
-        if (items.count() == 1) {
-            return child
-        }
-        // count > 1
-        if (child is JSONObject) {
-            return child.getLeaf(items[1], separator)
-        } else if (child is JSONArray) {
-            return child.getLeaf(items[1], separator)
-        }
-    }
-    return JSONObject.NULL
-}
-
-// get a leaf obj; ex: "resourceSets/0/resources/0/address/formattedAddress"
-fun JSONObject.getLeaf(leaf: String, separator: String = "/"): Any {
-    // val items = leaf.split(Regex(separator), 2)
-    val items = leaf.split(separator, limit = 2)
-    if (items.count() > 0) {
-        var child: Any =
-            try {
-                this.get(items[0])
-            } catch (e: JSONException) {
-                return JSONObject.NULL
-            }
-        if (items.count() == 1) {
-            return child
-        }
-        // count > 1
-        if (child is JSONObject) {
-            return child.getLeaf(items[1], separator)
-        } else if (child is JSONArray) {
-            return child.getLeaf(items[1], separator)
-        }
-    }
-    return JSONObject.NULL
+    return map
 }
 
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
 
 fun getHttpContent(url: String): String {
-    var content = ""
     try {
         val c = URI(url).toURL().openConnection()
         val s = c.getInputStream()
-        val buf = ByteBuffer.allocate(50000000)       // 50M buffer
-        while (buf.hasRemaining()) {
-            val r = s.read()
-            if (r >= 0) {
-                buf.put(r.toByte())
-            } else {
-                break
-            }
+        val bufStream = ByteArrayOutputStream()
+        var r = s.read()
+        while (r >= 0) {
+            bufStream.write(r)
+            r = s.read()
         }
         s.close()
-        content = String(buf.array(), buf.arrayOffset(), buf.position())
-    } finally {
-        return content
+        return bufStream.toString()
+    } catch (e: Exception) {
+        println("Failed to establish SSL connection to server: $e")
     }
+    return ""
+}
+
+/*
+allow self signed https
+    ref: https://developer.android.com/training/articles/security-ssl
+    ref: https://stackoverflow.com/questions/3761737/https-get-ssl-with-android-and-self-signed-server-certificate
+ */
+fun setUnsafeHttps(connection: URLConnection) {
+    if (connection is HttpsURLConnection) {
+
+        val ctx = SSLContext.getInstance("TLS")
+        ctx.init(null, arrayOf<TrustManager>(
+            object : X509TrustManager {
+                @SuppressLint("TrustAllX509TrustManager")
+                override fun checkClientTrusted(
+                    chain: Array<X509Certificate?>?,
+                    authType: String?
+                ) {
+                }
+
+                @SuppressLint("TrustAllX509TrustManager")
+                override fun checkServerTrusted(
+                    chain: Array<X509Certificate?>?,
+                    authType: String?
+                ) {
+                }
+
+                override fun getAcceptedIssuers(): Array<X509Certificate?>? {
+                    return arrayOf()
+                }
+            }
+        ), null)
+
+        connection.sslSocketFactory = ctx.socketFactory
+        connection.hostnameVerifier = HostnameVerifier { _, _ -> true }
+    }
+}
+
+// get self-signed https contents, only used for connection to my own server
+fun getHttpContentUnSafe(url: String): String {
+    try {
+        val c = URI(url).toURL().openConnection()
+        setUnsafeHttps(c)
+        val s = c.getInputStream()
+        val bufStream = ByteArrayOutputStream()
+        var r = s.read()
+        while (r >= 0) {
+            bufStream.write(r)
+            r = s.read()
+        }
+        s.close()
+        return bufStream.toString()
+    } catch (e: Exception) {
+        println("Failed to establish SSL connection to server: $e")
+    }
+    return ""
 }

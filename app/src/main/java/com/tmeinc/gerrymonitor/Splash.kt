@@ -10,9 +10,8 @@ import android.os.SystemClock
 
 class Splash : Activity() {
 
-    private val timerHandler = Handler(Looper.getMainLooper())
     private var timerStart = SystemClock.elapsedRealtime()
-    var splashRun = false
+    private var splashRun = false
 
     private fun timerRun() {
         if (splashRun) {
@@ -29,7 +28,7 @@ class Splash : Activity() {
             }
             // post dealyed
             if (splashRun)
-                timerHandler.postDelayed({
+                mainHandler.postDelayed({
                     timerRun()
                 }, 200)
         }
@@ -59,7 +58,7 @@ class Splash : Activity() {
         super.onStart()
 
         splashRun = true
-        timerHandler.postDelayed({
+        mainHandler.postDelayed({
             timerRun()
         }, 2000)
 
@@ -68,6 +67,6 @@ class Splash : Activity() {
     override fun onStop() {
         super.onStop()
         splashRun = false
-        timerHandler.removeCallbacksAndMessages(null)
+        mainHandler.removeCallbacksAndMessages(null)
     }
 }

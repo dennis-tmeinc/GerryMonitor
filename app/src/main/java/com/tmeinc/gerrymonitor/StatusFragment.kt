@@ -1,6 +1,7 @@
 package com.tmeinc.gerrymonitor
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.DisplayMetrics
@@ -49,33 +50,42 @@ class StatusFragment : Fragment() {
 
     var statusList = mutableListOf<UnitStatus>()   // display alert list
 
-    inner class StatusListAdapter() : RecyclerView.Adapter<StatusListAdapter.ViewHolder>() {
+    inner class StatusListAdapter : RecyclerView.Adapter<StatusListAdapter.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.fragment_status, parent, false)
+            view.setOnClickListener {
+                if( it.tag != null ) {
+                    val intent = Intent(it.context, GerryLiveActivity::class.java)
+                    intent.putExtra("mdu", "${it.tag}")
+                    startActivity(intent)
+                }
+            }
             return ViewHolder(view)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val us = statusList[position]
 
+            holder.itemView.tag = us.mduId
+
             holder.location.text = "Location: ${us.location}"
             holder.unit.text = "Unit: ${us.unit}"
 
             val subTotal = us.subs
             if (!us.isReady) {
-                holder.subs_icon.visibility = View.GONE
-                holder.subs_text.text = "Device not ready!"
+                holder.subsIcon.visibility = View.GONE
+                holder.subsText.text = "Device not ready!"
             } else if (subTotal <= 0) {
-                holder.subs_icon.visibility = View.VISIBLE
-                holder.subs_text.text = "0 occupant"
+                holder.subsIcon.visibility = View.VISIBLE
+                holder.subsText.text = "0 occupant"
             } else if (subTotal == 1) {
-                holder.subs_icon.visibility = View.GONE
-                holder.subs_text.text = "1 occupant"
+                holder.subsIcon.visibility = View.GONE
+                holder.subsText.text = "1 occupant"
             } else {  // > 1
-                holder.subs_icon.visibility = View.GONE
-                holder.subs_text.text = "$subTotal occupants"
+                holder.subsIcon.visibility = View.GONE
+                holder.subsText.text = "$subTotal occupants"
             }
 
             //  bind all subs
@@ -104,7 +114,7 @@ class StatusFragment : Fragment() {
                             (statusSub.findViewById(R.id.roomName) as TextView).text =
                                 "Room: ${roomName}"
 
-                            var si = subSplit[0].toInt()
+                            var si = subSplit[0].trim().toInt()
                             if (si < 0 || si >= status_icons.size)
                                 si = 0
                             (statusSub.findViewById(R.id.statusIcon) as ImageView).setImageResource(
@@ -117,7 +127,7 @@ class StatusFragment : Fragment() {
                             if (subSplit.count() > 2) {
                                 try {
                                     val datetime =
-                                        SimpleDateFormat("yyyyMMddHHmmss").parse(subSplit[2])
+                                        SimpleDateFormat("yyyyMMddHHmmss").parse(subSplit[2].trim())
                                             ?: Date()
                                     val datetimeStr = SimpleDateFormat.getDateTimeInstance(
                                         DateFormat.DEFAULT,
@@ -153,8 +163,8 @@ class StatusFragment : Fragment() {
 
             val location: TextView = view.findViewById(R.id.location)
             val unit: TextView = view.findViewById(R.id.unit)
-            val subs_icon: ImageView = view.findViewById(R.id.subs_icon)
-            val subs_text: TextView = view.findViewById(R.id.subs_text)
+            val subsIcon: ImageView = view.findViewById(R.id.subs_icon)
+            val subsText: TextView = view.findViewById(R.id.subs_text)
             val tableLayout: TableLayout = view.findViewById(R.id.statusTableLayout)
         }
     }
@@ -190,7 +200,7 @@ class StatusFragment : Fragment() {
         statusListAdapter.notifyDataSetChanged()
     }
 
-    fun stopStatus() {
+    private fun stopStatus() {
         GerryService.instance
             ?.gerryHandler
             ?.sendEmptyMessage(GerryService.MSG_GERRY_STATUS_STOP)
@@ -216,21 +226,6 @@ class StatusFragment : Fragment() {
             view.addItemDecoration(itemDecoration)
         }
         return view
-    }
-
-    fun isVisible(v: View): Boolean {
-
-        if (!v.isShown)
-            return false
-
-        val w = v.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val displayMetrics = DisplayMetrics()
-        w.defaultDisplay.getMetrics(displayMetrics)
-
-        var rect = Rect()
-        v.getGlobalVisibleRect(rect)
-        val screen = Rect(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
-        return rect.intersect(screen)
     }
 
     override fun onStart() {

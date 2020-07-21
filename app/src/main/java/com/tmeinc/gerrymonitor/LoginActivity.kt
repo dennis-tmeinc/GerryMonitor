@@ -13,7 +13,7 @@ class LoginActivity : AppCompatActivity() {
 
     lateinit var username: EditText
     lateinit var password: EditText
-    lateinit var client_id: Spinner
+    lateinit var clientId: Spinner
     lateinit var login: Button
     lateinit var loading: ProgressBar
 
@@ -22,7 +22,7 @@ class LoginActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_login)
 
-        client_id = findViewById(R.id.client_id)
+        clientId = findViewById(R.id.client_id)
         username = findViewById(R.id.username)
         password = findViewById(R.id.password)
         login = findViewById(R.id.login)
@@ -47,8 +47,8 @@ class LoginActivity : AppCompatActivity() {
         // Specify the layout to use when the list of choices appears
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         // Apply the adapter to the spinner
-        client_id.adapter = adapter
-        client_id.setSelection(sel)
+        clientId.adapter = adapter
+        clientId.setSelection(sel)
 
         password.apply {
 
@@ -64,7 +64,7 @@ class LoginActivity : AppCompatActivity() {
 
                 if (GerryService.instance != null) {
                     loading.visibility = View.VISIBLE
-                    var cliendId = client_id.selectedItem?.toString()
+                    var cliendId = clientId.selectedItem?.toString()
                     if (cliendId == null) {
                         cliendId = "marcus1"
                     }

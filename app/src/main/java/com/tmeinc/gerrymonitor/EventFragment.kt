@@ -14,7 +14,6 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-
 /**
  * A fragment representing a list of Events/Alerts
  */
@@ -32,10 +31,9 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         val type = event.getLeafInt("type")
         val path = event.getLeafString("path")
 
-        private val gerryUnit
-            get() = synchronized(GerryService.gerryMDUs) {
-                GerryService.gerryMDUs[mdu]
-            }
+        private val gerryUnit = synchronized(GerryService.gerryMDUs) {
+            GerryService.gerryMDUs[mdu]
+        }
 
         val loc: String
             get() = gerryUnit.getLeafString("info/loc")
@@ -105,6 +103,8 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
     private val displayAdapter = EventListAdapter()
 
+    private var updateRun = false
+
     private fun cbUpdateList(mdu: String, list: List<Any?>) {
 
         if (list.isNotEmpty()) {
@@ -117,21 +117,29 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
     }
 
     private fun cbCompleteList() {
-        // do filter and sort here
-        if (eventListChanged) {
-            // sort
-            eventList.sortDescending()
+        if (updateRun) {
+            // do filter and sort here
+            if (eventListChanged) {
+                // sort
+                eventList.sortDescending()
 
-            // fileter?
+                // fileter?
 
 
-            displayList = eventList.toList()
-            displayAdapter.notifyDataSetChanged()
-            eventListChanged = false
+                displayList = eventList.toList()
+                displayAdapter.notifyDataSetChanged()
+                eventListChanged = false
+            }
+
+            // repeat
+            mainHandler.postDelayed({
+                updateList()
+            }, 60000)
         }
+
     }
 
-    fun updateList() {
+    private fun updateList() {
         var keys = synchronized(GerryService.gerryMDUs) {
             GerryService.gerryMDUs.keys
         }
@@ -189,8 +197,14 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         return view
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
+        updateRun = true
         updateList()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        updateRun = false
     }
 }
