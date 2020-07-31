@@ -1,6 +1,5 @@
 package com.tmeinc.gerrymonitor
 
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -11,7 +10,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
-class GerryLiveActivity : AppCompatActivity() {
+class PlayEventActivity : AppCompatActivity() {
 
     lateinit var mdu: String
     private lateinit var viewPager: ViewPager2
@@ -43,7 +42,7 @@ class GerryLiveActivity : AppCompatActivity() {
         for (i in camList.indices) {
             val cam = camList[i]
             val bg = cam.getLeafString("bg")
-            if (!bg.isBlank() && cam.getLeafInt("enable") != 0 )
+            if (!bg.isBlank() && cam.getLeafInt("enable") != 0)
                 cameraList.add(
                     CamInfo(
                         i,
@@ -66,7 +65,7 @@ class GerryLiveActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_gerry_live)
+        setContentView(R.layout.activity_play_event)
 
         val iMdu = intent.getStringExtra("mdu")
         if (iMdu != null) {
@@ -84,7 +83,7 @@ class GerryLiveActivity : AppCompatActivity() {
         val fab: FloatingActionButton = findViewById(R.id.fab)
 
         fab.setOnClickListener {
-            this@GerryLiveActivity.onBackPressed()
+            this@PlayEventActivity.onBackPressed()
         }
 
         // get camera info
@@ -98,44 +97,13 @@ class GerryLiveActivity : AppCompatActivity() {
             )
             ?.sendToTarget()
 
+        // original codes
         /*
-        // use marcus file service to get DB info
-        executorService.submit {
-            val dbRes = gerryDB("SELECT * FROM camera WHERE mdu_id = '${mdu}'")
-            if (dbRes["res"] == 1) {
-                val o = dbRes["output"]
-                if (o is JSONArray) {
-                    for (i in 0 until o.length()) {
-                        val id = o.getLeafInt("$i/id")
-                        val bg = o.getLeafString("$i/roc_background_img_path")
-                        if (bg.length > 2)
-                            cameraList.add(CamInfo(id, bg))
-                        // (viewPager.adapter as FragmentStateAdapter).notifyItemInserted(cameraList.lastIndex)
-                    }
-                    mainHandler.post {
-                        (viewPager.adapter as FragmentStateAdapter).notifyDataSetChanged()
-                    }
-                }
-            }
-        }
-         */
-
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-
-        val mdu = intent?.getStringExtra("mdu") ?: return
-
-        // get camera info
-        GerryService.instance
-            ?.gerryHandler
-            ?.obtainMessage(
-                GerryService.MSG_GERRY_GET_CAM_INFO, mapOf(
-                    "mdu" to mdu,
-                    "cbCamInfo" to ::cbCamInfo
-                )
-            )
-            ?.sendToTarget()
+        val sectionsPagerAdapter = SectionsPagerAdapter(this, supportFragmentManager)
+        val viewPager: ViewPager = findViewById(R.id.view_pager)
+        viewPager.adapter = sectionsPagerAdapter
+        val tabs: TabLayout = findViewById(R.id.tabs)
+        tabs.setupWithViewPager(viewPager)
+        */
     }
 }

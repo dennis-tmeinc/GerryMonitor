@@ -4,8 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 
 class Splash : Activity() {
@@ -20,7 +18,7 @@ class Splash : Activity() {
                     startActivity(Intent(this, GerryMainActivity::class.java))
                     finish()
                     splashRun = false
-                } else if (SystemClock.elapsedRealtime() - timerStart > 10000 || GerryService.gerryRun == GerryService.RUN_USERLOGIN) {
+                } else if (SystemClock.elapsedRealtime() - timerStart > 10000 || GerryService.gerryRun == GerryService.RUN_USER_LOGIN) {
                     startActivity(Intent(this, LoginActivity::class.java))
                     finish()
                     splashRun = false

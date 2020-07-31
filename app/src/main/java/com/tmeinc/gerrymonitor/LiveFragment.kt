@@ -48,24 +48,14 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
             ?.sendToTarget()
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        cameraId = (activity as GerryLiveActivity).cameraList[position].id
-        bgImagePath = (activity as GerryLiveActivity).cameraList[position].bgImg
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        val fragmentView = inflater.inflate(R.layout.fragment_live, container, false)
-        drawView = fragmentView.findViewById(R.id.drawView)
-
+    private fun getBackground1() {
         val metrics = context!!.resources.displayMetrics
         val screenDensity = metrics.density
+    }
 
+    private fun getBackground() {
+        val metrics = context!!.resources.displayMetrics
+        val screenDensity = metrics.density
         executorService
             .submit {
                 // load background files
@@ -89,7 +79,9 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                     }
 
                 } else {
-                    val bgData = gerryGetFile(bgFilename)
+                    // use http is much faster, why?
+                    // val bgData = gerryGetFile(bgFilename)
+                    val bgData = gerryReadFile(bgFilename)
                     val opt = BitmapFactory.Options()
                     opt.inJustDecodeBounds = true
                     BitmapFactory.decodeByteArray(
@@ -103,7 +95,7 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                     val w = opt.outWidth
                     val sw = 2 * drawView.width / screenDensity
                     var scale = 1
-                    while ( sw < w.toFloat() / scale )
+                    while (sw < w.toFloat() / scale)
                         scale *= 2
 
                     opt.inJustDecodeBounds = false
@@ -134,7 +126,24 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                     fCfg.close()
                 }
             }
+    }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        cameraId = (activity as GerryLiveActivity).cameraList[position].id
+        bgImagePath = (activity as GerryLiveActivity).cameraList[position].bgImg
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // Inflate the layout for this fragment
+        val fragmentView = inflater.inflate(R.layout.fragment_live, container, false)
+        drawView = fragmentView.findViewById(R.id.drawView)
+
+        getBackground()
         return fragmentView
     }
 

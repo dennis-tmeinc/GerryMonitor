@@ -1,11 +1,7 @@
 package com.tmeinc.gerrymonitor
 
-import android.os.SystemClock
-import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.channels.SocketChannel
-import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 
 /** mss_msg protocol structure
@@ -31,6 +27,20 @@ import java.util.zip.CRC32
 class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
 
     companion object {
+        // msg structure fields offset
+        const val offset_id = 0
+        const val offset_id1 = 1
+        const val offset_version = 2
+        const val offset_command = 3
+        const val offset_ack = 4
+        const val offset_reason = 5
+        const val offset_wData = 6
+        const val offset_qwData = 8
+        const val offset_dwData = 16
+        const val offset_ext_crc = 20
+        const val offset_extSize = 24
+        const val offset_crc = 28
+        const val msg_size = 32
 
         // gerry commands
         const val CLIENT_LOGIN_REQUEST = 1
@@ -46,6 +56,7 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val CLIENT_CLOSE_READFILE = 11
         const val CLIENT_GET_EVENTS = 12
         const val NOTIFY_ALERT = 13
+        const val CLIENT_GET_CAM_INFO = 14
         const val CLIENT_KEEPALIVE = 255
 
         // mdu message
@@ -71,20 +82,6 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
 
-        // msg structure fields offset
-        const val offset_id = 0
-        const val offset_id1 = 1
-        const val offset_version = 2
-        const val offset_command = 3
-        const val offset_ack = 4
-        const val offset_reason = 5
-        const val offset_wData = 6
-        const val offset_qwData = 8
-        const val offset_dwData = 16
-        const val offset_ext_crc = 20
-        const val offset_extSize = 24
-        const val offset_crc = 28
-        const val msg_size = 32
     }
 
     val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
@@ -162,15 +159,9 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         setData(data.toXml())
     }
 
-    // XML data as string
-    private val dataStr: String
-        get() =
-            String(xData.array(), xData.arrayOffset(), xData.limit())
-
     // XML data as obj (Map)
-    fun dataObj(): Any {
-        return dataStr.xmlObj()
-    }
+    val xmlObj: Any
+        get() = String(xData.array(), xData.arrayOffset(), xData.limit()).xmlObj()
 
     // generate crc checksum
     fun crc() {
@@ -213,7 +204,7 @@ enum subject_status {
 }
 */
 
-val status_icons = listOf(
+val status_icons = arrayOf(
     R.drawable.icon_gerry_event,
     R.drawable.icon_standing,               //    STANDING = 1,
     R.drawable.icon_laying_on_floor,        //    LYING_ON_FLOOR = 2,
@@ -231,7 +222,7 @@ val status_icons = listOf(
     R.drawable.icon_dangerous_maneuver      //    STANDING_ON_CHAIR=14,
 )
 
-val status_texts = listOf(
+val status_texts = arrayOf(
     R.string.status_unknown,
     R.string.status_standing,               //    STANDING = 1,
     R.string.status_lying_on_floor,         //    LYING_ON_FLOOR = 2,
@@ -284,13 +275,13 @@ enum event_type {
 }
 
  */
-val event_icons = listOf(
+val event_icons = arrayOf(
     R.drawable.icon_gerry_event,
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR = 1,
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR_NO_MOVEMENT = 2,
     R.drawable.icon_getting_up_from_floor,  //  OFF_FLOOR = 3,
-    R.drawable.icon_entering_unit,          //  ENTERING  = 4,
-    R.drawable.icon_exiting_unit,           //  LEAVING   = 5,
+    R.drawable.icon_entering_room,          //  ENTERING  = 4,
+    R.drawable.icon_exiting_room,           //  LEAVING   = 5,
     R.drawable.icon_laying_on_bed,          //  ON_BED    = 6,
     R.drawable.icon_getting_out_of_bed,     //  OFF_BED   = 7,
     R.drawable.icon_standing,               //  STANDING  = 8,
@@ -318,7 +309,7 @@ val event_icons = listOf(
     R.drawable.icon_sitting_on_sofa         //  SITTING_ON_SOFA_TOO_LONG=30
 )
 
-val event_texts = listOf(
+val event_texts = arrayOf(
     R.string.event_unknown,
     R.string.event_on_floor,                        //  ON_FLOOR = 1,
     R.string.event_on_floor_no_movement,            //  ON_FLOOR_NO_MOVEMENT = 2,

@@ -96,7 +96,7 @@ class LoginActivity : AppCompatActivity() {
                 }
                 finish()
             } else {
-                if (gerryRun == GerryService.RUN_USERLOGIN) {
+                if (gerryRun == GerryService.RUN_USER_LOGIN) {
                     if (loading.visibility != View.GONE) {
                         loading.visibility = View.GONE
                         Toast.makeText(this, R.string.prompt_password_error, Toast.LENGTH_LONG)

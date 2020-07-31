@@ -7,9 +7,9 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlSerializer
 import java.io.StringReader
 import java.io.StringWriter
-import kotlin.collections.set
 
-private fun XmlPullParser.parseXMLtoJson(): Any {
+private fun XmlPullParser.parseXMLtoJson():
+        Any {
     var s = ""
     val o = JSONObject()
     while (next() != XmlPullParser.END_TAG) {
@@ -26,26 +26,29 @@ private fun XmlPullParser.parseXMLtoJson(): Any {
                 o.put(key, value)
             }
         } else if (eventType == XmlPullParser.TEXT) {
-            if (!isWhitespace)
+            if (!isWhitespace) {
                 s = text
+            }
         } else if (eventType == XmlPullParser.END_DOCUMENT) {
             break
         }
     }
-    return if (o.length() > 0)
+    return if (o.length() > 0) {
         o
-    else
+    } else {
         s.trim()
+    }
 }
 
 fun xmlToJson(xml: String): JSONObject {
     val parser = Xml.newPullParser()
     parser.setInput(StringReader(xml))
     val j = parser.parseXMLtoJson()
-    return if (j is JSONObject)
+    return if (j is JSONObject) {
         j
-    else
+    } else {
         JSONObject()
+    }
 }
 
 private fun XmlPullParser.parseXML(): Any {
@@ -66,19 +69,21 @@ private fun XmlPullParser.parseXML(): Any {
                 o[tag] = value
             }
         } else if (eventType == XmlPullParser.TEXT) {
-            if (!isWhitespace)
+            if (!isWhitespace) {
                 s = text
+            }
         } else if (eventType == XmlPullParser.END_DOCUMENT) {
             break
         }
     }
-    return if (o.isEmpty())
+    return if (o.isEmpty()) {
         s.trim()
-    else
+    } else {
         o
+    }
 }
 
-// get Obj from xml string
+// XML string to Map
 fun String.xmlObj(): Any {
     val parser = Xml.newPullParser()
     return try {
@@ -135,18 +140,17 @@ private fun StringWriter.writeXML(obj: Any?, depth: Int = 0, tag: String = "i") 
     }
 }
 
-private const val xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-
 /* convert Json obj or map to String */
 // this is my own version without using XmlSerializer
 fun objToXml(obj: Any?): String {
+    val xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
     return StringWriter().apply {
         write(xmlHeader)
         writeXML(obj)
     }.toString()
 }
 
-private fun XmlSerializer.tagXML(obj: Any?, tag: String) {
+private fun XmlSerializer.tagXML(tag: String, obj: Any?) {
     startTag(null, tag)
     serializeXML(obj)
     endTag(null, tag)
@@ -160,10 +164,10 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
                     val value = obj[key]
                     if (value is List<*>) {
                         for (v in value) {
-                            tagXML(v, key)
+                            tagXML(key, v)
                         }
                     } else {
-                        tagXML(value, key)
+                        tagXML(key, value)
                     }
                 }
             }
@@ -173,10 +177,10 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
                 val value = obj[key]
                 if (value is JSONArray) {
                     for (i in 0 until value.length()) {
-                        tagXML(value[i], key)
+                        tagXML(key, value[i])
                     }
                 } else {
-                    tagXML(value, key)
+                    tagXML(key, value)
                 }
             }
         }
@@ -186,6 +190,7 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
     }
 }
 
+/* Top level 'Any' here should be a Map or JSONObject, so I make this function private */
 private fun Any.toXml(): String {
     val writer = StringWriter()
     Xml.newSerializer().let {
@@ -207,8 +212,9 @@ fun JSONObject.toXml(): String {
 
 // get a leaf obj from Any,  ex: "resourceSets/0/resources/0/address/formattedAddress"
 fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
-    if (this == null)
+    if (this == null) {
         return null
+    }
     val items = leafPath.split(separator, limit = 2)
     if (items.isNotEmpty()) {
         val child =
@@ -235,7 +241,9 @@ fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
             }
         return if (items.size == 1) {
             child
-        } else child?.getLeaf(items[1], separator)
+        } else {
+            child?.getLeaf(items[1], separator)
+        }
     }
     return null
 }
@@ -244,6 +252,9 @@ fun Any?.getLeafArray(leafPath: String, separator: String = "/"): List<Any?> {
     return when (val leaf = getLeaf(leafPath, separator)) {
         is List<*> -> {
             leaf
+        }
+        is JSONArray -> {
+            leaf.toList()
         }
         null -> {
             emptyList()

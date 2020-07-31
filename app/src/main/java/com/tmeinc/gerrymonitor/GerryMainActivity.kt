@@ -112,14 +112,17 @@ class GerryMainActivity : AppCompatActivity() {
 
     }
 
-    var x = ""
     override fun onStart() {
         super.onStart()
 
+        /* testing
+            connect to self-signed https
+        var x=""
         executorService.submit {
-            val itWorks = getHttpContentUnSafe("https://192.168.119.60:8443/")
+            val itWorks = getHttpContentUnSafe("https://192.168.119.60/")
             x = itWorks.substring(0)
         }
+        */
     }
 
     override fun onStop() {

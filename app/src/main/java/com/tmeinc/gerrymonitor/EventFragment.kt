@@ -1,5 +1,6 @@
 package com.tmeinc.gerrymonitor
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -24,22 +25,23 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         const val ALERT_LIST = "alerts"
     }
 
-    class EventItem(val mdu: String, event: Any?) : Comparable<EventItem> {
+    class EventItem(val mdu: String, val event: Any?) : Comparable<EventItem> {
 
         val ts = event.getLeafLong("ts")
         val room = event.getLeafString("room")
         val type = event.getLeafInt("type")
-        val path = event.getLeafString("path")
+        val eventFile = event.getLeafString("path")
+        val status = event.getLeafInt("status")
+        val staff = event.getLeafInt("staff")
+        val cameras = event.getLeafArray("camera")
 
         private val gerryUnit = synchronized(GerryService.gerryMDUs) {
             GerryService.gerryMDUs[mdu]
         }
 
-        val loc: String
-            get() = gerryUnit.getLeafString("info/loc")
+        val loc = gerryUnit.getLeafString("info/loc")
 
-        val unit: String
-            get() = gerryUnit.getLeafString("info/unit")
+        val unit = gerryUnit.getLeafString("info/unit")
 
         val resident: String
             get() = gerryUnit.getLeafArray("info/residents/name").joinToString {
@@ -53,11 +55,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             ).format(Date(1000L * ts))
 
         override fun compareTo(other: EventItem): Int {
-            var comp = ts.compareTo(other.ts)
-            if (comp == 0) {
-                comp = mdu.compareTo(other.mdu)
-            }
-            return comp
+            return ts.compareTo(other.ts)
         }
 
     }
@@ -71,6 +69,20 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.fragment_event, parent, false)
+
+            view.setOnClickListener {
+                val eventPos = it.tag
+                if (eventPos is Int && eventPos >= 0 && eventPos < displayList.size) {
+                    val eventXml = mapOf(
+                        "event" to displayList[eventPos].event
+                    ).toXml()
+                    val intent = Intent(it.context, GerryLiveActivity::class.java)
+                    intent.putExtra("event", eventXml)
+                    intent.putExtra("mdu", displayList[eventPos].mdu)
+                    // startActivity(intent)
+                }
+            }
+
             return ViewHolder(view)
         }
 
@@ -87,6 +99,11 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             }
             holder.room.text = item.room
             holder.time.text = item.time
+            if (item.eventFile.isBlank()) {
+                holder.itemView.tag = -1
+            } else {
+                holder.itemView.tag = position
+            }
         }
 
         override fun getItemCount(): Int = displayList.size
@@ -123,8 +140,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                 // sort
                 eventList.sortDescending()
 
-                // fileter?
-
+                // filtering goes here
 
                 displayList = eventList.toList()
                 displayAdapter.notifyDataSetChanged()
@@ -161,12 +177,8 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                 "start" to start,
                 "end" to (now + 24 * 3600),
                 "command" to getListCommand,
-                "cbUpdateList" to { mdu: String, list: List<Any?> ->
-                    cbUpdateList(mdu, list)
-                },
-                "cbCompleteList" to {
-                    cbCompleteList()
-                }
+                "cbUpdateList" to ::cbUpdateList,
+                "cbCompleteList" to ::cbCompleteList
             )
             GerryService.instance
                 ?.gerryHandler

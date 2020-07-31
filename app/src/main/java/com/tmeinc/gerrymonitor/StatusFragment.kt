@@ -1,14 +1,10 @@
 package com.tmeinc.gerrymonitor
 
-import android.content.Context
 import android.content.Intent
-import android.graphics.Rect
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -25,14 +21,13 @@ class StatusFragment : Fragment() {
 
     class UnitStatus(val mduId: String) {
 
-        private val mdu: Any?
-            get() =
-                synchronized(GerryService.gerryMDUs) {
-                    GerryService.gerryMDUs[mduId]
-                }
+        private val mdu =
+            synchronized(GerryService.gerryMDUs) {
+                GerryService.gerryMDUs[mduId]
+            }
 
         val isReady: Boolean
-            get() = mdu.getLeafString("status") == "Run"
+            get() = mdu.getLeafString("status") == "Run" && mdu.getLeaf("status_mdup") != null
 
         val location: String
             get() = mdu.getLeafString("info/loc")
@@ -48,7 +43,7 @@ class StatusFragment : Fragment() {
 
     }
 
-    var statusList = mutableListOf<UnitStatus>()   // display alert list
+    val statusList = mutableListOf<UnitStatus>()   // display alert list
 
     inner class StatusListAdapter : RecyclerView.Adapter<StatusListAdapter.ViewHolder>() {
 
@@ -56,7 +51,7 @@ class StatusFragment : Fragment() {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.fragment_status, parent, false)
             view.setOnClickListener {
-                if( it.tag != null ) {
+                if (it.tag != null) {
                     val intent = Intent(it.context, GerryLiveActivity::class.java)
                     intent.putExtra("mdu", "${it.tag}")
                     startActivity(intent)
@@ -124,11 +119,9 @@ class StatusFragment : Fragment() {
                                 status_texts[si]
                             )
 
-                            if (subSplit.count() > 2) {
+                            if (subSplit.count() > 1) {
                                 try {
-                                    val datetime =
-                                        SimpleDateFormat("yyyyMMddHHmmss").parse(subSplit[2].trim())
-                                            ?: Date()
+                                    val datetime = Date(subSplit[1].trim().toLong() * 1000L)
                                     val datetimeStr = SimpleDateFormat.getDateTimeInstance(
                                         DateFormat.DEFAULT,
                                         DateFormat.DEFAULT
@@ -154,11 +147,11 @@ class StatusFragment : Fragment() {
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             init {
-                val backgrondcolor = listOf(
+                val backgrondColor = listOf(
                     R.color.material_on_background_emphasis_high_type,
                     R.color.colorAccent
                 )
-                view.setBackgroundResource(backgrondcolor[1])
+                view.setBackgroundResource(backgrondColor[1])
             }
 
             val location: TextView = view.findViewById(R.id.location)

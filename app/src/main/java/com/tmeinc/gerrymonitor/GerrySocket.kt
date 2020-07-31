@@ -103,7 +103,7 @@ class GerrySocket : Closeable {
                 }
             }
             msg.mssMsg.rewind()
-            if (msg.isValid && msg.extSize >= 0 && msg.extSize < 10000000) {
+            if (msg.isValid && msg.extSize >= 0 && msg.extSize <= 10000000) {
                 if (msg.extSize > 0) {
                     msg.xData = ByteBuffer.allocate(msg.extSize)
                     while (msg.xData.hasRemaining()) {

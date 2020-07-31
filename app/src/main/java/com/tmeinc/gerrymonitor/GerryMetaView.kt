@@ -31,6 +31,13 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
 
     private var poseList = emptyList<List<PosePoint>>()
 
+    // remove poses after 30 seconds
+    val resetPosesRunnable = Runnable {
+        poseList = emptyList<List<PosePoint>>()
+        postInvalidateDelayed(1000)
+    }
+
+    // may called from other thread
     fun setPoses(poses: List<Any?>) {
         poseList = List(poses.size) { i ->
             val poseStr = poses[i]
@@ -51,6 +58,9 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
             }
         }
         postInvalidate()
+        // auto clear poses after 30 seconds
+        mainHandler.removeCallbacks(resetPosesRunnable)
+        mainHandler.postDelayed(resetPosesRunnable, 30000)
     }
 
     fun setBackground(bgImage: Bitmap, w: Int, h: Int) {
@@ -103,7 +113,7 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
                 return PosePoint(0.0f, 0.0f)
             }
 
-            fun getBodySize():Int{
+            fun getBodySize(): Int {
                 return 0
             }
 
@@ -135,12 +145,12 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
                         it.moveTo(pose[p_r_shoulder].x, pose[p_r_shoulder].y)
                     if (pose[p_l_shoulder].x > 0 && pose[p_l_shoulder].y > 0)
                         it.lineTo(pose[p_l_shoulder].x, pose[p_l_shoulder].y)
-                    if(pose[p_l_hip].x>0 && pose[p_l_hip].y>0 )
+                    if (pose[p_l_hip].x > 0 && pose[p_l_hip].y > 0)
                         it.lineTo(pose[p_l_hip].x, pose[p_l_hip].y)
-                    if(pose[p_r_hip].x>0 && pose[p_r_hip].y>0)
-                    it.lineTo(pose[p_r_hip].x, pose[p_r_hip].y)
-                    if(pose[p_r_shoulder].x>0&& pose[p_r_shoulder].y>0)
-                    it.lineTo(pose[p_r_shoulder].x, pose[p_r_shoulder].y)
+                    if (pose[p_r_hip].x > 0 && pose[p_r_hip].y > 0)
+                        it.lineTo(pose[p_r_hip].x, pose[p_r_hip].y)
+                    if (pose[p_r_shoulder].x > 0 && pose[p_r_shoulder].y > 0)
+                        it.lineTo(pose[p_r_shoulder].x, pose[p_r_shoulder].y)
                     it.close()
                     paint.color = Color.RED
                     paint.style = Paint.Style.FILL
