@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
+import java.util.*
 
 class Splash : Activity() {
 
@@ -60,6 +61,16 @@ class Splash : Activity() {
             timerRun()
         }, 2000)
 
+        // do some cache cleaning
+        executorService
+            .submit {
+                val t = Date().time
+                val cacheFiles = externalCacheDir?.listFiles() ?: emptyArray()
+                for (file in cacheFiles) {
+                    if (t - file.lastModified() > 5 * 24 * 3600 * 1000L)
+                        file.delete()
+                }
+            }
     }
 
     override fun onStop() {

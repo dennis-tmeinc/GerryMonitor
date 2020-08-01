@@ -12,7 +12,8 @@
         android:layout_height="@android:dimen/notification_large_icon_height"
         android:layout_gravity="center"
         android:layout_weight="1"
-        app:srcCompat="@drawable/icon_gerry_event" />
+        app:srcCompat="@drawable/icon_gerry_event"
+        android:contentDescription="Event" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -46,6 +47,13 @@
             android:id="@+id/time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
     </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/playable"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:srcCompat="@android:drawable/presence_video_online" />
 
 </LinearLayout>

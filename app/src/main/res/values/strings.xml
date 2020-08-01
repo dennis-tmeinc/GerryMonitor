@@ -71,11 +71,11 @@
     <string name="event_stay_in_shower_too_long">Stay in show too long</string>
     <string name="event_sit_on_toilet_too_long">Sit on toilet too long</string>
     <string name="event_sit_on_sofa_too_long">Sit on sofa too long</string>
-    <string name="title_activity_gerry_live">GerryLiveActivity</string>
+    <string name="title_activity_gerry_live">Gerry Live</string>
     <string name="tab_text_1">Tab 1</string>
     <string name="tab_text_2">Tab 2</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="title_activity_play_event">PlayEventActivity</string>
+    <string name="title_activity_play_event">Gerry Play</string>
 
 </resources>

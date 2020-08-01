@@ -14,8 +14,9 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
 
     data class PosePoint(val x: Float, val y: Float)
 
-    private var imgWidth = 1280
-    private var imgHeight = 720
+    // initial as HD image
+    private var imgWidth = 1920
+    private var imgHeight = 1080
 
     private val screenDensity =
         context.resources.displayMetrics.density
@@ -32,10 +33,12 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
     private var poseList = emptyList<List<PosePoint>>()
 
     // remove poses after 30 seconds
-    val resetPosesRunnable = Runnable {
+    private val resetPosesRunnable = Runnable {
         poseList = emptyList<List<PosePoint>>()
         postInvalidateDelayed(1000)
     }
+
+    var autoClear = true
 
     // may called from other thread
     fun setPoses(poses: List<Any?>) {
@@ -57,12 +60,19 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
                 emptyList()
             }
         }
+        // redraw pose image
         postInvalidate()
-        // auto clear poses after 30 seconds
-        mainHandler.removeCallbacks(resetPosesRunnable)
-        mainHandler.postDelayed(resetPosesRunnable, 30000)
+
+        // auto clear poses after 10 seconds
+        if (autoClear) {
+            mainHandler.removeCallbacks(resetPosesRunnable)
+            mainHandler.postDelayed(resetPosesRunnable, 10000)
+        }
     }
 
+    // set background images,
+    //      bgImage : scaled background image
+    //      w,h : original ROC image size
     fun setBackground(bgImage: Bitmap, w: Int, h: Int) {
         imgWidth = w
         imgHeight = h
@@ -70,7 +80,7 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
         setImageBitmap(bgImage)
     }
 
-
+    // check if view is visible on Screen
     fun isVisible(): Boolean {
 
         if (!isShown)

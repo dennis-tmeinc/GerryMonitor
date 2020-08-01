@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
@@ -76,10 +77,10 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                     val eventXml = mapOf(
                         "event" to displayList[eventPos].event
                     ).toXml()
-                    val intent = Intent(it.context, GerryLiveActivity::class.java)
+                    val intent = Intent(it.context, PlayEventActivity::class.java)
                     intent.putExtra("event", eventXml)
                     intent.putExtra("mdu", displayList[eventPos].mdu)
-                    // startActivity(intent)
+                    startActivity(intent)
                 }
             }
 
@@ -100,8 +101,10 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             holder.room.text = item.room
             holder.time.text = item.time
             if (item.eventFile.isBlank()) {
+                holder.playable.visibility = View.GONE
                 holder.itemView.tag = -1
             } else {
+                holder.playable.visibility = View.VISIBLE
                 holder.itemView.tag = position
             }
         }
@@ -115,6 +118,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             val residents: TextView = view.findViewById(R.id.residents)
             val room: TextView = view.findViewById(R.id.room)
             val time: TextView = view.findViewById(R.id.time)
+            val playable:ImageButton = view.findViewById(R.id.playable)
         }
     }
 

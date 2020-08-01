@@ -27,7 +27,7 @@ class StatusFragment : Fragment() {
             }
 
         val isReady: Boolean
-            get() = mdu.getLeafString("status") == "Run" && mdu.getLeaf("status_mdup") != null
+            get() = mdu.getLeaf("status_mdup") != null
 
         val location: String
             get() = mdu.getLeafString("info/loc")

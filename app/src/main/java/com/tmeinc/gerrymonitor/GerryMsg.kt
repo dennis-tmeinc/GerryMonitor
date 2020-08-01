@@ -159,9 +159,13 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         setData(data.toXml())
     }
 
+    // XML data as string (XML)
+    val xml: String
+        get() = String(xData.array(), xData.arrayOffset(), xData.limit())
+
     // XML data as obj (Map)
     val xmlObj: Any
-        get() = String(xData.array(), xData.arrayOffset(), xData.limit()).xmlObj()
+        get() = xml.xmlObj()
 
     // generate crc checksum
     fun crc() {

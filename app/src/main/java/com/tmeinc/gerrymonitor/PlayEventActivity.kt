@@ -13,21 +13,20 @@ import com.google.android.material.tabs.TabLayoutMediator
 class PlayEventActivity : AppCompatActivity() {
 
     lateinit var mdu: String
+    var event: Any? = null
     private lateinit var viewPager: ViewPager2
     lateinit var tabs: TabLayout
 
-    data class CamInfo(val id: Int, val name: String, val bgImg: String, val roomName: String)
-
-    var cameraList = mutableListOf<CamInfo>()
+    var cameraList =listOf<Any?>()
 
     inner class PagerAdapter :
         FragmentStateAdapter(this) {
 
         override fun createFragment(position: Int): Fragment {
             return if (position < cameraList.size) {
-                LiveFragment(mdu, position)
+                PlayFragment(mdu, position)
             } else {
-                LiveFragment(mdu, 0)
+                PlayFragment(mdu, 0)
             }
         }
 
@@ -36,31 +35,40 @@ class PlayEventActivity : AppCompatActivity() {
         }
     }
 
-    // cam info call back
-    private fun cbCamInfo(camList: List<Any?>) {
-        cameraList.clear()
-        for (i in camList.indices) {
-            val cam = camList[i]
-            val bg = cam.getLeafString("bg")
-            if (!bg.isBlank() && cam.getLeafInt("enable") != 0)
-                cameraList.add(
-                    CamInfo(
-                        i,
-                        cam.getLeafString("name"),
-                        bg,
-                        cam.getLeafString("room")
-                    )
-                )
-        }
-        if (cameraList.isEmpty()) {
-            Toast.makeText(this, "Device information not available!", Toast.LENGTH_LONG).show()
-            finish()
-        } else {
-            TabLayoutMediator(tabs, viewPager) { tab, position ->
-                tab.text = cameraList[position].name
-            }.attach()
-            (viewPager.adapter as FragmentStateAdapter).notifyDataSetChanged()
-        }
+    private fun setupEvents() {
+        // read event file
+        executorService
+            .submit {
+                // load background files
+                val genFile = event.getLeafString("event/path")
+                if (genFile.isBlank()) {
+                    return@submit
+                }
+                val genXML = gerryGetFile(genFile)
+                val gen = String(genXML).xmlObj()
+                val camList = gen.getLeafArray("mdup/animation/camera")
+                if (camList.isNotEmpty()) {
+                    cameraList = camList
+                    mainHandler.post{
+                        TabLayoutMediator(tabs, viewPager) { tab, position ->
+                            val camNum = cameraList.getLeafInt("${position}/num")
+                            tab.text = "Camera #${camNum}"
+                        }.attach()
+                        (viewPager.adapter as FragmentStateAdapter).notifyDataSetChanged()
+                    }
+                }
+                else {
+                    mainHandler.post{
+                        finish()
+                        Toast.makeText(
+                            this@PlayEventActivity,
+                            "Invalid alert playback file!",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,7 +76,8 @@ class PlayEventActivity : AppCompatActivity() {
         setContentView(R.layout.activity_play_event)
 
         val iMdu = intent.getStringExtra("mdu")
-        if (iMdu != null) {
+        event = intent.getStringExtra("event").xmlObj()
+        if (iMdu != null && event is Map<*, *>) {
             mdu = iMdu
         } else {
             finish()        // don't know what to do
@@ -86,16 +95,8 @@ class PlayEventActivity : AppCompatActivity() {
             this@PlayEventActivity.onBackPressed()
         }
 
-        // get camera info
-        GerryService.instance
-            ?.gerryHandler
-            ?.obtainMessage(
-                GerryService.MSG_GERRY_GET_CAM_INFO, mapOf(
-                    "mdu" to mdu,
-                    "cbCamInfo" to ::cbCamInfo
-                )
-            )
-            ?.sendToTarget()
+        setupEvents()
+
 
         // original codes
         /*

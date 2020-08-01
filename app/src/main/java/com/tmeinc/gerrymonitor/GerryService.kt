@@ -270,7 +270,13 @@ class GerryService : Service() {
             if (mdu is MutableMap<*, *>) {
                 @Suppress("UNCHECKED_CAST")
                 (mdu as MutableMap<String, Any?>).apply {
-                    this["status_mdup"] = xmlData.getLeaf("mclient/mdup")
+                    val mdup = xmlData.getLeaf("mclient/mdup")
+                    if( mdup == null) {
+                        remove("status_mdup")
+                    }
+                    else {
+                        this["status_mdup"] = mdup
+                    }
 
                     // fake data for debugging
                     // this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
@@ -603,6 +609,13 @@ class GerryService : Service() {
                                         this["status_callback"] = cb
                                         if (ack != null) {
                                             this["status"] = "Run"
+                                            val mdup = ack.xmlObj.getLeaf("mclient/mdup")
+                                            if( mdup == null ) {
+                                                remove("status_mdup")
+                                            }
+                                            else {
+                                                this["status_mdup"] = mdup
+                                            }
                                         } else {
                                             // failed
                                             this["status"] = "Failed"
@@ -629,7 +642,6 @@ class GerryService : Service() {
                                     @Suppress("UNCHECKED_CAST")
                                     (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
                                         this["status"] = "Stopped"
-                                        remove("status_mdup")
                                         remove("status_callback")
                                     }
                                 }
