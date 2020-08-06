@@ -2,6 +2,7 @@ package com.tmeinc.gerrymonitor
 
 import android.app.Service
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -62,7 +63,6 @@ class GerryMainActivity : AppCompatActivity() {
         }
 
         override fun getCount(): Int {
-            // 3 pages
             return 3
         }
     }
@@ -96,18 +96,26 @@ class GerryMainActivity : AppCompatActivity() {
         })
 
         val fab: FloatingActionButton = findViewById(R.id.fab)
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Not yet!", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
+        fab.setOnClickListener {
+            Snackbar.make(it, "Not yet!", Snackbar.LENGTH_LONG)
+                .setAction("Action", null)
+                .show()
+            /*
+            val intent = Intent(it.context, GerrySettingsActivity::class.java)
+                .putExtra("mdu", "")
+            startActivity(intent)
+
+             */
         }
 
         var page: Int
-        getSharedPreferences("Settings", Service.MODE_PRIVATE).apply {
-            page = this.getInt("start_page", 0)
-            if (page == 0) {        // use last closed page
-                page = this.getInt("last_page", 0)
+        getSharedPreferences("Settings", Service.MODE_PRIVATE)
+            .apply {
+                page = getInt("start_page", 0)
+                if (page == 0) {        // use last closed page
+                    page = getInt("last_page", 0)
+                }
             }
-        }
         tabs.selectTab(tabs.getTabAt(page))
 
     }
@@ -129,8 +137,11 @@ class GerryMainActivity : AppCompatActivity() {
         super.onStop()
         val tabs: TabLayout = findViewById(R.id.tabs)
         tabs.selectedTabPosition
-        getSharedPreferences("Settings", Service.MODE_PRIVATE).edit().apply {
-            this.putInt("last_page", tabs.selectedTabPosition)
-        }.apply()
+        getSharedPreferences("Settings", Service.MODE_PRIVATE)
+            .edit()
+            .apply {
+                this.putInt("last_page", tabs.selectedTabPosition)
+            }
+            .apply()
     }
 }

@@ -48,11 +48,6 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
             ?.sendToTarget()
     }
 
-    private fun getBackground1() {
-        val metrics = context!!.resources.displayMetrics
-        val screenDensity = metrics.density
-    }
-
     private fun getBackground() {
         val metrics = context!!.resources.displayMetrics
         val screenDensity = metrics.density
@@ -60,10 +55,12 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
             .submit {
                 // load background files
                 val bgFilename = bgImagePath
-                val hash = bgFilename.hashCode()
+                val hash = bgFilename
+                    .hashCode()
+                    .toString(Character.MAX_RADIX)
 
-                val file = File(context!!.externalCacheDir, "bg${mdu}_${hash}")
-                val cfgFile = File(context!!.externalCacheDir, "bg${mdu}_${hash}.cfg")
+                val file = File(context!!.externalCacheDir, "b${hash}")
+                val cfgFile = File(context!!.externalCacheDir, "b${hash}.cfg")
                 if (file.exists() && cfgFile.exists()) {
                     val fCfg = FileInputStream(cfgFile)
                     val buffer = ByteArray(2048)
@@ -72,8 +69,13 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                     val w = cfg.getLeafInt("w")
                     val h = cfg.getLeafInt("h")
                     fCfg.close()
+                    if (h < 16 || w < 16) {
+                        return@submit
+                    }
 
                     val bgImage = BitmapFactory.decodeFile(file.path)
+                        ?: return@submit
+
                     drawView.post {
                         drawView.setBackground(bgImage, w, h)
                     }
@@ -81,7 +83,11 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                 } else {
                     // use http is much faster, why?
                     // val bgData = gerryGetFile(bgFilename)
+
                     val bgData = gerryReadFile(bgFilename)
+                    if (bgData.size < 8) {
+                        return@submit
+                    }
                     val opt = BitmapFactory.Options()
                     opt.inJustDecodeBounds = true
                     BitmapFactory.decodeByteArray(
@@ -93,10 +99,15 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
 
                     val h = opt.outHeight
                     val w = opt.outWidth
+                    if (h < 16 || w < 16) {
+                        return@submit
+                    }
+
                     val sw = 2 * drawView.width / screenDensity
                     var scale = 1
-                    while (sw < w.toFloat() / scale)
+                    while (sw < w.toFloat() / scale) {
                         scale *= 2
+                    }
 
                     opt.inJustDecodeBounds = false
                     opt.inSampleSize = scale
@@ -105,14 +116,14 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                         0,
                         bgData.size,
                         opt
-                    )
+                    ) ?: return@submit
                     drawView.post {
                         drawView.setBackground(bgImage, w, h)
                     }
 
                     // save image cache
                     val fOut = FileOutputStream(file)
-                    bgImage.compress(Bitmap.CompressFormat.JPEG, 80, fOut)
+                    bgImage.compress(Bitmap.CompressFormat.WEBP, 80, fOut)
                     fOut.close()
 
                     // save image cfg

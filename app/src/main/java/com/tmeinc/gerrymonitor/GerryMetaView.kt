@@ -76,7 +76,7 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
     fun setBackground(bgImage: Bitmap, w: Int, h: Int) {
         imgWidth = w
         imgHeight = h
-        // scale view size
+        // scaled image
         setImageBitmap(bgImage)
     }
 

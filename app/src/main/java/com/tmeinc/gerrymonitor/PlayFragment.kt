@@ -46,10 +46,13 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
                 if (bgFilename.isBlank()) {
                     return@submit
                 }
-                val hash = bgFilename.hashCode()
 
-                val file = File(context!!.externalCacheDir, "bg${mdu}_${hash}")
-                val cfgFile = File(context!!.externalCacheDir, "bg${mdu}_${hash}.cfg")
+                val hash = bgFilename
+                    .hashCode()
+                    .toString(Character.MAX_RADIX)
+
+                val file = File(context!!.externalCacheDir, "b${hash}")
+                val cfgFile = File(context!!.externalCacheDir, "b${hash}.cfg")
                 if (file.exists() && cfgFile.exists()) {
                     val fCfg = FileInputStream(cfgFile)
                     val buffer = ByteArray(2048)
@@ -58,8 +61,13 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
                     val w = cfg.getLeafInt("w")
                     val h = cfg.getLeafInt("h")
                     fCfg.close()
+                    if (h < 16 || w < 16) {
+                        return@submit
+                    }
 
                     val bgImage = BitmapFactory.decodeFile(file.path)
+                        ?: return@submit
+
                     drawView.post {
                         drawView.setBackground(bgImage, w, h)
                     }
@@ -88,8 +96,9 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
 
                     val sw = 2 * drawView.width / screenDensity
                     var scale = 1
-                    while (sw < w.toFloat() / scale)
+                    while (sw < w.toFloat() / scale) {
                         scale *= 2
+                    }
 
                     opt.inJustDecodeBounds = false
                     opt.inSampleSize = scale
@@ -98,14 +107,16 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
                         0,
                         bgData.size,
                         opt
-                    )
+                    ) ?: return@submit
+
                     drawView.post {
                         drawView.setBackground(bgImage, w, h)
                     }
 
                     // save image cache
+                    // save image cache
                     val fOut = FileOutputStream(file)
-                    bgImage.compress(Bitmap.CompressFormat.JPEG, 80, fOut)
+                    bgImage.compress(Bitmap.CompressFormat.WEBP, 80, fOut)
                     fOut.close()
 
                     // save image cfg
@@ -154,8 +165,9 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
     private fun play() {
         showFrame()
         mainHandler.removeCallbacks(playRunnable)
-        if (++currentFrame < frameList.size)
+        if (++currentFrame < frameList.size) {
             mainHandler.postDelayed(playRunnable, 1000L / fps)
+        }
     }
 
     private fun pause() {
@@ -181,6 +193,9 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
         textTime = fragmentView.findViewById(R.id.textTime)
         progressBar = fragmentView.findViewById(R.id.progressBar)
 
+        // keep last draw poses
+        drawView.autoClear = false
+
         camFrames = (activity as PlayEventActivity).cameraList[position]
         cameraNum = camFrames.getLeafInt("num")
         fps = camFrames.getLeafInt("fps")
@@ -205,6 +220,9 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
         }
         bt = fragmentView.findViewById(R.id.buttonPlay)
         bt.setOnClickListener {
+            if (currentFrame >= frameList.size) {
+                currentFrame = 0
+            }
             play()
         }
         bt = fragmentView.findViewById(R.id.buttonPause)

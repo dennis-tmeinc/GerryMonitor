@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.tmeinc.gerrymonitor">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -15,22 +14,21 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
-
+        <activity
+            android:name=".GerrySettingsActivity"
+            android:label="@string/title_activity_gerry_settings" />
         <activity
             android:name=".PlayEventActivity"
             android:label="@string/title_activity_play_event"
             android:theme="@style/AppTheme.NoActionBar" />
-
         <activity
             android:name=".GerryLiveActivity"
             android:label="@string/title_activity_gerry_live"
             android:theme="@style/AppTheme.NoActionBar" />
-
         <activity
             android:name=".GerryMainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBar" />
-
         <activity
             android:name=".LoginActivity"
             android:label="@string/title_activity_login" />

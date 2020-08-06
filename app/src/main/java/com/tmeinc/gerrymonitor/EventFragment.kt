@@ -9,6 +9,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -53,7 +54,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             get() = SimpleDateFormat.getDateTimeInstance(
                 DateFormat.DEFAULT,
                 DateFormat.DEFAULT
-            ).format(Date(1000L * ts))
+            ).format(Date(ts * 1000))
 
         override fun compareTo(other: EventItem): Int {
             return ts.compareTo(other.ts)
@@ -73,13 +74,16 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
             view.setOnClickListener {
                 val eventPos = it.tag
-                if (eventPos is Int && eventPos >= 0 && eventPos < displayList.size) {
+                if (eventPos is Int
+                    && eventPos >= 0
+                    && eventPos < displayList.size
+                ) {
                     val eventXml = mapOf(
                         "event" to displayList[eventPos].event
                     ).toXml()
                     val intent = Intent(it.context, PlayEventActivity::class.java)
-                    intent.putExtra("event", eventXml)
-                    intent.putExtra("mdu", displayList[eventPos].mdu)
+                        .putExtra("event", eventXml)
+                        .putExtra("mdu", displayList[eventPos].mdu)
                     startActivity(intent)
                 }
             }
@@ -118,13 +122,29 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             val residents: TextView = view.findViewById(R.id.residents)
             val room: TextView = view.findViewById(R.id.room)
             val time: TextView = view.findViewById(R.id.time)
-            val playable:ImageButton = view.findViewById(R.id.playable)
+            val playable: ImageButton = view.findViewById(R.id.playable)
         }
     }
 
     private val displayAdapter = EventListAdapter()
 
     private var updateRun = false
+
+    // filtering display items
+    private fun filterList() {
+        val sP = PreferenceManager.getDefaultSharedPreferences(activity)
+        val eventSet = sP.getStringSet("events_display", emptySet<String>())
+        val eventValues = resources.getStringArray(R.array.event_names)
+
+        // filtering goes here
+        val sortedList = eventList.filter {
+            val eventValue = eventValues[it.type]
+            eventSet?.contains(eventValue) ?: false
+        }
+
+        displayList = eventList.toList()
+        displayAdapter.notifyDataSetChanged()
+    }
 
     private fun cbUpdateList(mdu: String, list: List<Any?>) {
 
@@ -144,10 +164,9 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                 // sort
                 eventList.sortDescending()
 
-                // filtering goes here
+                // filtering display items
+                filterList()
 
-                displayList = eventList.toList()
-                displayAdapter.notifyDataSetChanged()
                 eventListChanged = false
             }
 
@@ -217,6 +236,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         super.onResume()
         updateRun = true
         updateList()
+        filterList()
     }
 
     override fun onPause() {

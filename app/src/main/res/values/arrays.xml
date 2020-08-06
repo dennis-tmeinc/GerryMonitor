@@ -1,0 +1,76 @@
+<resources>
+    <!-- Reply Preference -->
+    <string-array name="reply_entries">
+        <item>Reply</item>
+        <item>Reply to all</item>
+    </string-array>
+
+    <string-array name="reply_values">
+        <item>reply</item>
+        <item>reply_all</item>
+    </string-array>
+
+    <string-array name="duration_entries">
+        <item>1 day</item>
+        <item>1 week</item>
+        <item>30 days</item>
+    </string-array>
+
+    <string-array name="duration_values">
+        <item>1</item>
+        <item>7</item>
+        <item>30</item>
+    </string-array>
+
+    <string-array name="status_names">
+        <item>@string/status_unknown</item>
+        <item>@string/status_standing</item>
+        <item>@string/status_lying_on_floor</item>
+        <item>@string/status_lying_on_bed</item>
+        <item>@string/status_sitting</item>
+        <item>@string/status_walking</item>
+        <item>@string/status_fallen</item>
+        <item>@string/status_on_bed</item>
+        <item>@string/status_upbody_up_from_bed</item>
+        <item>@string/status_feet_off_bed</item>
+        <item>@string/status_sitting_on_toilet</item>
+        <item>@string/status_sitting_on_sofa</item>
+        <item>@string/status_in_shower</item>
+        <item>@string/status_unit_empty</item>
+        <item>@string/status_standing_on_chair</item>
+    </string-array>
+
+    <string-array name="event_names">
+        <item name="event_unknown">Unknown event</item>
+        <item name="event_on_floor">On floor</item>
+        <item name="event_on_floor_no_movement">On floor no movement</item>
+        <item name="event_off_floor">Off floor</item>
+        <item name="event_entering">Entering</item>
+        <item name="event_leaving">Leaving</item>
+        <item name="event_on_bed">On bed</item>
+        <item name="event_off_bed">Off bed</item>
+        <item name="event_standing">Standing</item>
+        <item name="event_sitting">Sitting</item>
+        <item name="event_walking">Walking</item>
+        <item name="event_entering_at_configured_time">Entering at configured time</item>
+        <item name="event_leaving_at_configured_time">Leaving at configured time</item>
+        <item name="event_active_at_night">Active at night</item>
+        <item name="event_on_bed_not_move_too_long">On bed not move for too long</item>
+        <item name="event_on_bed_too_long">On bed for too long</item>
+        <item name="event_upper_body_up_from_bed">Upper body up from bed</item>
+        <item name="event_stay_washroom_too_long">Stay in washroom too long</item>
+        <item name="event_feet_off_bed">Feet off bed</item>
+        <item name="event_sitting_on_toilet">Sitting on toilet</item>
+        <item name="event_sitting_on_sofa">Sitting on sofa</item>
+        <item name="event_enter_in_shower">Enter in shower</item>
+        <item name="event_enter_unit">Enter unit</item>
+        <item name="event_leave_unit">Leave unit</item>
+        <item name="event_unit_empty">Unit empty</item>
+        <item name="event_standing_on_chair">Standing on chair</item>
+        <item name="event_wandering_at_night">Wandering at night</item>
+        <item name="event_stay_in_shower_too_long">Stay in show too long</item>
+        <item name="event_sit_on_toilet_too_long">Sit on toilet too long</item>
+        <item name="event_sit_on_sofa_too_long">Sit on sofa too long</item>
+    </string-array>
+
+</resources>

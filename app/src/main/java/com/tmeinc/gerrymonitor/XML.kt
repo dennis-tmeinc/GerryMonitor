@@ -190,7 +190,7 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
     }
 }
 
-/* Top level 'Any' here should be a Map or JSONObject, so I make this function private */
+/* Top level 'Any' here should only be a Map or JSONObject, so I make this function private */
 private fun Any.toXml(): String {
     val writer = StringWriter()
     Xml.newSerializer().let {
