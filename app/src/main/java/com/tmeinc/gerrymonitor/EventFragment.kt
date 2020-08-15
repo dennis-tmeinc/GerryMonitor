@@ -1,6 +1,7 @@
 package com.tmeinc.gerrymonitor
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -62,9 +63,11 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
     }
 
+    lateinit var defaultSharedPreferences: SharedPreferences
     private var eventListChanged = false
     private val eventList = mutableListOf<EventItem>()
     var displayList = listOf<EventItem>()   // display alert list
+    var eventDuration = 30
 
     inner class EventListAdapter() : RecyclerView.Adapter<EventListAdapter.ViewHolder>() {
 
@@ -132,17 +135,21 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
     // filtering display items
     private fun filterList() {
-        val sP = PreferenceManager.getDefaultSharedPreferences(activity)
-        val eventSet = sP.getStringSet("events_display", emptySet<String>())
-        val eventValues = resources.getStringArray(R.array.event_names)
 
-        // filtering goes here
-        val sortedList = eventList.filter {
-            val eventValue = eventValues[it.type]
-            eventSet?.contains(eventValue) ?: false
+        val eventStrSet = defaultSharedPreferences.getStringSet("events_display", null)
+        val eventSet = mutableSetOf<Int>()
+        if( eventStrSet != null ) {
+            for (s in eventStrSet) {
+                eventSet.add(s.toInt())
+            }
         }
 
-        displayList = eventList.toList()
+        // filtering goes here
+        displayList = eventList.filter {
+            eventSet.isEmpty() or
+            eventSet.contains(it.type)
+        }
+
         displayAdapter.notifyDataSetChanged()
     }
 
@@ -188,12 +195,11 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                 getListCommand = GerryMsg.CLIENT_GET_ALERTS
             }
 
-            val days = 30       // how many days to get event?
             val now = System.currentTimeMillis() / 1000
             var start = if (eventList.isNotEmpty()) {
                 eventList[0].ts + 1
             } else {
-                now - days * 24 * 3600
+                now - eventDuration * 24 * 3600
             }
             val obj = mapOf(
                 "mduSet" to keys,
@@ -229,12 +235,22 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             view.addItemDecoration(itemDecoration)
         }
 
+        defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
+        eventDuration = 0
+
         return view
     }
 
     override fun onResume() {
         super.onResume()
         updateRun = true
+
+        val newEventDuration = defaultSharedPreferences.getString("event_duration", "30")?.toInt() ?: 30
+        if( newEventDuration != eventDuration) {
+            eventDuration = newEventDuration
+            eventList.clear()
+        }
+
         updateList()
         filterList()
     }

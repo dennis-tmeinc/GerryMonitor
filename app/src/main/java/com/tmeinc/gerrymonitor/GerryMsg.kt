@@ -82,6 +82,9 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
 
+        // max xdata size
+        const val MAX_XDATA = 10000000
+
     }
 
     val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
@@ -285,32 +288,42 @@ val event_icons = arrayOf(
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR_NO_MOVEMENT = 2,
     R.drawable.icon_getting_up_from_floor,  //  OFF_FLOOR = 3,
     R.drawable.icon_entering_room,          //  ENTERING  = 4,
+
     R.drawable.icon_exiting_room,           //  LEAVING   = 5,
     R.drawable.icon_laying_on_bed,          //  ON_BED    = 6,
     R.drawable.icon_getting_out_of_bed,     //  OFF_BED   = 7,
     R.drawable.icon_standing,               //  STANDING  = 8,
     R.drawable.icon_sitting,                //  SITTING   = 9,
+
     R.drawable.icon_walking,                //  WALKING   = 10,
     R.drawable.icon_entering_unit,          //  ENTERING_AT_CONFIGURED_TIME  = 11,
     R.drawable.icon_exiting_unit,           //  LEAVING_AT_CONFIGURED_TIME   = 12,
     R.drawable.icon_wandering,              //  ACTIVE_AT_NIGHT   = 13,
     R.drawable.icon_showering,              //  FREQUENT_BATH_USE = 14,
+
     R.drawable.icon_in_bed_too_long,        //  ON_BED_NOT_MOVE_TOO_LONG=15,
     R.drawable.icon_in_bed_too_long,        //  ON_BED_TOO_LONG=16,
     R.drawable.icon_in_bed_sitting_up,      //  UPPER_BODY_UP_FROM_BED=17,
     R.drawable.icon_in_washroom_too_long,   //  STAY_WASHROOM_TOO_LONG=18,
     R.drawable.icon_legs_over_bed,          //  FEET_OFF_BED=19,
+
     R.drawable.icon_toileting,              //  SITTING_ON_TOILET=20,
     R.drawable.icon_sitting_on_sofa,        //  SITTING_ON_SOFA=21,
     R.drawable.icon_showering,              //  ENTER_IN_SHOWER=22,
     R.drawable.icon_entering_unit,          //  ENTER_UNIT=23,
     R.drawable.icon_exiting_unit,           //  LEAVE_UNIT=24,
+
     R.drawable.icon_away_not_in_unit,       //  UNIT_EMPTY=25,
     R.drawable.icon_dangerous_maneuver,     //  STANDING_ON_CHAIR=26,
     R.drawable.icon_wandering,              //  WANDERING_AT_NIGHT=27,
     R.drawable.icon_showering,              //  STAY_IN_SHOWER_TOO_LONG=28,
     R.drawable.icon_toileting,              //  SIT_ON_TOILET_TOO_LONG=29,
-    R.drawable.icon_sitting_on_sofa         //  SITTING_ON_SOFA_TOO_LONG=30
+
+    R.drawable.icon_sitting_on_sofa,         //  SITTING_ON_SOFA_TOO_LONG=30
+
+    R.drawable.icon_gerry_event,         //  Coughing
+    R.drawable.icon_gerry_event         //   Stop breathing
+
 )
 
 val event_texts = arrayOf(
@@ -319,30 +332,39 @@ val event_texts = arrayOf(
     R.string.event_on_floor_no_movement,            //  ON_FLOOR_NO_MOVEMENT = 2,
     R.string.event_off_floor,                       //  OFF_FLOOR = 3,
     R.string.event_entering,                        //  ENTERING  = 4,
+
     R.string.event_leaving,                         //  LEAVING   = 5,
     R.string.event_on_bed,                          //  ON_BED    = 6,
     R.string.event_off_bed,                         //  OFF_BED   = 7,
     R.string.event_standing,                        //  STANDING  = 8,
     R.string.event_sitting,                         //  SITTING   = 9,
+
     R.string.event_walking,                         //  WALKING   = 10,
     R.string.event_entering_at_configured_time,     //  ENTERING_AT_CONFIGURED_TIME  = 11,
     R.string.event_leaving_at_configured_time,      //  LEAVING_AT_CONFIGURED_TIME   = 12,
     R.string.event_active_at_night,                 //  ACTIVE_AT_NIGHT   = 13,
     R.string.event_frequent_bath_use,               //  FREQUENT_BATH_USE = 14,
+
     R.string.event_on_bed_not_move_too_long,        //  ON_BED_NOT_MOVE_TOO_LONG=15,
     R.string.event_on_bed_too_long,                 //  ON_BED_TOO_LONG=16,
     R.string.event_upper_body_up_from_bed,          //  UPPER_BODY_UP_FROM_BED=17,
     R.string.event_stay_washroom_too_long,          //  STAY_WASHROOM_TOO_LONG=18,
     R.string.event_feet_off_bed,                    //  FEET_OFF_BED=19,
+
     R.string.event_sitting_on_toilet,               //  SITTING_ON_TOILET=20,
     R.string.event_sitting_on_sofa,                 //  SITTING_ON_SOFA=21,
     R.string.event_enter_in_shower,                 //  ENTER_IN_SHOWER=22,
     R.string.event_enter_unit,                      //  ENTER_UNIT=23,
     R.string.event_leave_unit,                      //  LEAVE_UNIT=24,
+
     R.string.event_unit_empty,                      //  UNIT_EMPTY=25,
     R.string.event_standing_on_chair,               //  STANDING_ON_CHAIR=26,
     R.string.event_wandering_at_night,              //  WANDERING_AT_NIGHT=27,
     R.string.event_stay_in_shower_too_long,         //  STAY_IN_SHOWER_TOO_LONG=28,
     R.string.event_sit_on_toilet_too_long,          //  SIT_ON_TOILET_TOO_LONG=29,
-    R.string.event_sitting_on_sofa                  //  SITTING_ON_SOFA_TOO_LONG=30
+
+    R.string.event_sitting_on_sofa,                 //  SITTING_ON_SOFA_TOO_LONG=30
+    R.string.event_coughing,       // 31,
+    R.string.event_stop_breathing           // 32
+
 )

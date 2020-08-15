@@ -41,36 +41,88 @@
     </string-array>
 
     <string-array name="event_names">
-        <item name="event_unknown">Unknown event</item>
+
         <item name="event_on_floor">On floor</item>
         <item name="event_on_floor_no_movement">On floor no movement</item>
         <item name="event_off_floor">Off floor</item>
         <item name="event_entering">Entering</item>
+
         <item name="event_leaving">Leaving</item>
         <item name="event_on_bed">On bed</item>
         <item name="event_off_bed">Off bed</item>
         <item name="event_standing">Standing</item>
         <item name="event_sitting">Sitting</item>
+
         <item name="event_walking">Walking</item>
         <item name="event_entering_at_configured_time">Entering at configured time</item>
         <item name="event_leaving_at_configured_time">Leaving at configured time</item>
         <item name="event_active_at_night">Active at night</item>
+        <item name="event_frequent_bath_use">Frequent bath use</item>
+
         <item name="event_on_bed_not_move_too_long">On bed not move for too long</item>
         <item name="event_on_bed_too_long">On bed for too long</item>
         <item name="event_upper_body_up_from_bed">Upper body up from bed</item>
         <item name="event_stay_washroom_too_long">Stay in washroom too long</item>
         <item name="event_feet_off_bed">Feet off bed</item>
+
         <item name="event_sitting_on_toilet">Sitting on toilet</item>
         <item name="event_sitting_on_sofa">Sitting on sofa</item>
         <item name="event_enter_in_shower">Enter in shower</item>
         <item name="event_enter_unit">Enter unit</item>
         <item name="event_leave_unit">Leave unit</item>
+
         <item name="event_unit_empty">Unit empty</item>
         <item name="event_standing_on_chair">Standing on chair</item>
         <item name="event_wandering_at_night">Wandering at night</item>
         <item name="event_stay_in_shower_too_long">Stay in show too long</item>
         <item name="event_sit_on_toilet_too_long">Sit on toilet too long</item>
+
         <item name="event_sit_on_sofa_too_long">Sit on sofa too long</item>
+        <item name="event_coughing">Coughing</item>
+        <item name="event_stop_breathing">Stop breathing</item>
+    </string-array>
+
+    <string-array name="event_types">
+
+        <item name="event_on_floor">1</item>
+        <item name="event_on_floor_no_movement">2</item>
+        <item name="event_off_floor">3</item>
+        <item name="event_entering">4</item>
+
+        <item name="event_leaving">5</item>
+        <item name="event_on_bed">6</item>
+        <item name="event_off_bed">7</item>
+        <item name="event_standing">8</item>
+        <item name="event_sitting">9</item>
+
+        <item name="event_walking">10</item>
+        <item name="event_entering_at_configured_time">11</item>
+        <item name="event_leaving_at_configured_time">12</item>
+        <item name="event_active_at_night">13</item>
+        <item name="event_frequent_bath_use">14</item>
+
+        <item name="event_on_bed_not_move_too_long">15</item>
+        <item name="event_on_bed_too_long">16</item>
+        <item name="event_upper_body_up_from_bed">17</item>
+        <item name="event_stay_washroom_too_long">18</item>
+        <item name="event_feet_off_bed">19</item>
+
+        <item name="event_sitting_on_toilet">20
+        </item>
+        <item name="event_sitting_on_sofa">21</item>
+        <item name="event_enter_in_shower">22</item>
+        <item name="event_enter_unit">23</item>
+        <item name="event_leave_unit">24</item>
+
+        <item name="event_unit_empty">25</item>
+        <item name="event_standing_on_chair">26</item>
+        <item name="event_wandering_at_night">27</item>
+        <item name="event_stay_in_shower_too_long">28</item>
+        <item name="event_sit_on_toilet_too_long">29</item>
+
+        <item name="event_sit_on_sofa_too_long">30</item>
+        <item name="event_coughing">31</item>
+        <item name="event_stop_breathing">32</item>
     </string-array>
 
 </resources>

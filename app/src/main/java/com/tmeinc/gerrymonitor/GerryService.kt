@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.preference.PreferenceManager
 import androidx.work.*
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -130,6 +131,7 @@ class GerryService : Service() {
                 msg.reason = GerryMsg.REASON_UNKNOWN_COMMAND
                 msg.setData()
             }
+
         }
 
         return true
@@ -209,54 +211,71 @@ class GerryService : Service() {
     }
 
     private fun showAlertNotification(ai: Map<*, *>) {
-        mainHandler.post {
-            val mdu = ai.getLeafString("mdu")
-            var eventType = ai.getLeafInt("type")
-            if (eventType < 0 || eventType >= event_texts.size) {
-                eventType = 0
-            }
-            val room = ai.getLeafString("room")
-            val unit = gerryMDUs.getLeafString("${mdu}/info/unit")
-            val loc = gerryMDUs.getLeafString("${mdu}/info/loc")
-            val title = resources.getText(event_texts[eventType]).toString()
-            val text = "in $room, ${unit}, $loc"        // room, at time
-            val bigIcon = event_icons[eventType]
 
-            // intent to run live activity
-            val intent = Intent(applicationContext, GerryLiveActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                putExtra("mdu", mdu)
-            }
-            val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, 0, intent, 0)
+        val defaultSharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(this)
+        val notificationEnabled = defaultSharedPreferences.getBoolean("notifications", true)
+        if (!notificationEnabled) {
+            return
+        }
 
-            // the NotificationChannel class is new and not in the support library
-            val notificationChannelId = getString(R.string.notification_channel_name)
-            val builder = NotificationCompat.Builder(this, notificationChannelId)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setCategory(Notification.CATEGORY_MESSAGE)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                // Set the intent that will fire when the user taps the notification
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
+        var eventType = ai.getLeafInt("type")
+        if (eventType < 0 || eventType >= event_texts.size) {
+            eventType = 0
+        }
 
-            try {
-                val drawable =
-                    ResourcesCompat.getDrawable(resources, bigIcon, null)
-
-                val bigIconBmp = drawable?.toBitmap()
-                if (bigIconBmp != null)
-                    builder.setLargeIcon(bigIconBmp)
-            } catch (e: Exception) {
-            }
-
-            with(NotificationManagerCompat.from(this)) {
-                // notificationId is a unique int for each notification that you must define
-                notify(bigIcon, builder.build())
+        val notificationSet =
+            defaultSharedPreferences.getStringSet("notification_filter", null)
+        if (notificationSet != null) {
+            if (!notificationSet.contains(eventType.toString())) {
+                return
             }
         }
+
+        val mdu = ai.getLeafString("mdu")
+        val room = ai.getLeafString("room")
+        val unit = gerryMDUs.getLeafString("${mdu}/info/unit")
+        val loc = gerryMDUs.getLeafString("${mdu}/info/loc")
+        val title = resources.getText(event_texts[eventType]).toString()
+        val text = "in $room, ${unit}, $loc"        // room, at time
+        val bigIcon = event_icons[eventType]
+
+        // intent to run live activity
+        val intent = Intent(applicationContext, GerryLiveActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            putExtra("mdu", mdu)
+        }
+        val pendingIntent: PendingIntent =
+            PendingIntent.getActivity(applicationContext, 0, intent, 0)
+
+        // the NotificationChannel class is new and not in the support library
+        val notificationChannelId = getString(R.string.notification_channel_name)
+        val builder = NotificationCompat.Builder(this, notificationChannelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setDefaults(Notification.DEFAULT_ALL)
+            .setCategory(Notification.CATEGORY_MESSAGE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            // Set the intent that will fire when the user taps the notification
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        try {
+            val drawable =
+                ResourcesCompat.getDrawable(resources, bigIcon, null)
+
+            val bigIconBmp = drawable?.toBitmap()
+            if (bigIconBmp != null)
+                builder.setLargeIcon(bigIconBmp)
+        } catch (e: Exception) {
+        }
+
+        with(NotificationManagerCompat.from(this)) {
+            // notificationId is a unique int for each notification that you must define
+            notify(bigIcon, builder.build())
+        }
+
     }
 
     // gerry service receiving procedure
@@ -271,10 +290,9 @@ class GerryService : Service() {
                 @Suppress("UNCHECKED_CAST")
                 (mdu as MutableMap<String, Any?>).apply {
                     val mdup = xmlData.getLeaf("mclient/mdup")
-                    if( mdup == null) {
+                    if (mdup == null) {
                         remove("status_mdup")
-                    }
-                    else {
+                    } else {
                         this["status_mdup"] = mdup
                     }
 
@@ -315,8 +333,11 @@ class GerryService : Service() {
     private fun gerryAlert(msg: GerryMsg) {
         val xmlData = msg.xmlObj
         val ai = xmlData.getLeaf("mclient/ai")
-        if (ai is Map<*, *>)
-            showAlertNotification(ai)
+        if (ai is Map<*, *>) {
+            mainHandler.post {
+                showAlertNotification(ai)
+            }
+        }
     }
 
     // MDU_EVENT_DATA (206), should never happen as in Marcus_Client Document from Tongrui, use gerryAlert()
@@ -338,16 +359,16 @@ class GerryService : Service() {
     // return null if failed
     fun gerryConnect(): GerrySocket? {
 
-        var server =  gerryDefaultServer
+        var server = gerryDefaultServer
         var port = gerryDefaultPort
         var client = clientID
 
         // get server/port from gerryClient
         val clientEntry = gerryClient.getLeaf("clients/${client}")
-        if( clientEntry is Map<*,*>) {
-             server = gerryClient.getLeafString("clients/${client}/server")
-             port = gerryClient.getLeafInt("clients/${client}/port")
-             client = gerryClient.getLeafString("clients/${client}/clientid")
+        if (clientEntry is Map<*, *>) {
+            server = gerryClient.getLeafString("clients/${client}/server")
+            port = gerryClient.getLeafInt("clients/${client}/port")
+            client = gerryClient.getLeafString("clients/${client}/clientid")
         }
 
         // username , server ip are must
@@ -520,12 +541,19 @@ class GerryService : Service() {
                             synchronized(gerryMDUs) {
                                 gerryMDUs.clear()
                             }
+                            val cb = msg.obj.getLeaf("callback")
                             // clear saved login info
                             mainHandler.post {
-                                getSharedPreferences(serviceName, MODE_PRIVATE).edit().apply {
-                                    putString("username", username)
-                                    putString("password", password)
-                                    apply()
+                                getSharedPreferences(serviceName, MODE_PRIVATE)
+                                    .edit()
+                                    .apply {
+                                        putString("username", username)
+                                        putString("password", password)
+                                        apply()
+                                    }
+                                if (cb is Function<*>) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    (cb as () -> Unit)()
                                 }
                             }
                         }
@@ -610,10 +638,9 @@ class GerryService : Service() {
                                         if (ack != null) {
                                             this["status"] = "Run"
                                             val mdup = ack.xmlObj.getLeaf("mclient/mdup")
-                                            if( mdup == null ) {
+                                            if (mdup == null) {
                                                 remove("status_mdup")
-                                            }
-                                            else {
+                                            } else {
                                                 this["status_mdup"] = mdup
                                             }
                                         } else {
@@ -980,7 +1007,7 @@ class GerryService : Service() {
 }
 
 // read file through Gerry Service
-fun gerryReadFile(path: String): ByteArray {
+fun gerryReadFileX(path: String): ByteArray {
     val bufStream = ByteArrayOutputStream()
     val gerrySocket = GerryService.instance?.gerryConnect()
     if (gerrySocket != null) {
@@ -994,8 +1021,8 @@ fun gerryReadFile(path: String): ByteArray {
             ) != null
         ) {
             val readMsg = GerryMsg(GerryMsg.CLIENT_READFILE)
-            readMsg.dwData = 1000000
             while (true) {
+                readMsg.dwData = GerryMsg.MAX_XDATA
                 readMsg.qwData = bufStream.size().toLong()
                 gerrySocket.sendGerryMsg(readMsg)
                 val ack = gerrySocket.gerryAck(readMsg.command)
@@ -1017,6 +1044,34 @@ fun gerryReadFile(path: String): ByteArray {
         gerrySocket.close()
     }
     return bufStream.toByteArray()
+}
+
+
+// read file through Gerry Service
+fun gerryReadFile(path: String): ByteArray {
+    GerryService.instance?.gerryConnect()?.use {
+        if (it.gerryCmd(
+                GerryMsg.CLIENT_OPEN_READFILE,
+                mapOf(
+                    "mclient" to mapOf(
+                        "filename" to path
+                    )
+                )
+            ) != null
+        ) {
+            val readMsg = GerryMsg(GerryMsg.CLIENT_READFILE)
+            readMsg.dwData = GerryMsg.MAX_XDATA
+            readMsg.qwData = 0
+            it.sendGerryMsg(readMsg)
+            val ack = it.gerryAck(readMsg.command)
+            if (ack != null && ack.extSize > 0) {
+                return ack.xData.array()
+            }
+            // close read file, I would just close the connection to save some time
+            // gerrySocket.gerryCmd(GerryMsg.CLIENT_CLOSE_READFILE)
+        }
+    }
+    return ByteArray(0)
 }
 
 // Gerry http services

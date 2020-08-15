@@ -44,7 +44,7 @@ class PlayEventActivity : AppCompatActivity() {
                 if (genFile.isBlank()) {
                     return@submit
                 }
-                val genXML = gerryGetFile(genFile)
+                val genXML = gerryReadFile(genFile)
                 val gen = String(genXML).xmlObj()
                 val camList = gen.getLeafArray("mdup/animation/camera")
                 if (camList.isNotEmpty()) {
@@ -52,7 +52,7 @@ class PlayEventActivity : AppCompatActivity() {
                     mainHandler.post{
                         TabLayoutMediator(tabs, viewPager) { tab, position ->
                             val camNum = cameraList.getLeafInt("${position}/num")
-                            tab.text = "Camera #${camNum}"
+                            tab.text = "Sensor #${camNum}"
                         }.attach()
                         (viewPager.adapter as FragmentStateAdapter).notifyDataSetChanged()
                     }
@@ -76,7 +76,7 @@ class PlayEventActivity : AppCompatActivity() {
         setContentView(R.layout.activity_play_event)
 
         val iMdu = intent.getStringExtra("mdu")
-        event = intent.getStringExtra("event").xmlObj()
+        event = intent.getStringExtra("event")?.xmlObj()
         if (iMdu != null && event is Map<*, *>) {
             mdu = iMdu
         } else {
@@ -92,7 +92,7 @@ class PlayEventActivity : AppCompatActivity() {
         val fab: FloatingActionButton = findViewById(R.id.fab)
 
         fab.setOnClickListener {
-            this@PlayEventActivity.onBackPressed()
+            onBackPressed()
         }
 
         setupEvents()

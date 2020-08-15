@@ -5,67 +5,45 @@
 
         <androidx.preference.ListPreference
             app:defaultValue="30"
-            app:entries="@array/event_names"
-            app:entryValues="@array/event_names"
+            app:entries="@array/duration_entries"
+            app:entryValues="@array/duration_values"
             app:key="event_duration"
             app:title="@string/event_duration_title"
             app:useSimpleSummaryProvider="true" />
 
         <MultiSelectListPreference
-            app:key="events_display"
-            app:title="Alerts/Events filter"
-            app:summary="Select what alerts/events to display"
+            app:defaultValue="@array/event_types"
             app:entries="@array/event_names"
-            app:entryValues="@array/event_names"
-            />
+            app:entryValues="@array/event_types"
+            app:key="events_display"
+            app:summary="@string/event_filter_summary"
+            app:title="@string/event_filter_title" />
 
-        <MultiSelectListPreference
-            android:defaultValue="@array/event_names"
-            android:entries="@array/event_names"
-            android:entryValues="@array/event_names"
-            android:key="multi_select_list_preference_1"
-            android:title="Multi select list preference" />
         <SwitchPreferenceCompat
             app:key="notifications"
-            app:title="Enable message notifications"/>
+            app:defaultValue="true"
+            app:title="@string/alert_notification_title" />
 
-        <ListPreference
-            app:defaultValue="false"
-            app:entries="@array/reply_entries"
-            app:entryValues="@array/reply_values"
-            app:key="reply"
-            app:title="@string/reply_title"
-            app:useSimpleSummaryProvider="true" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory app:title="@string/sync_header">
-
-        <SwitchPreferenceCompat
-            app:key="sync"
-            app:title="@string/sync_title" />
-
-        <SwitchPreferenceCompat
-            app:dependency="sync"
-            app:key="attachment"
-            app:summaryOff="@string/attachment_summary_off"
-            app:summaryOn="@string/attachment_summary_on"
-            app:title="@string/attachment_title" />
+        <MultiSelectListPreference
+            app:dependency="notifications"
+            app:defaultValue="@array/event_types"
+            app:entries="@array/event_names"
+            app:entryValues="@array/event_types"
+            app:key="notification_filter"
+            app:title="@string/alert_notification_filter_title"
+            app:summary="@string/alert_notification_filter_summary" />
 
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/user_header">
         <Preference
             app:dialogIcon="@android:drawable/ic_dialog_alert"
-
             app:dialogLayout="@android:layout/select_dialog_multichoice"
             app:dialogMessage="GERR TEST"
             app:dialogTitle="Gerrry"
             app:key="logout"
             app:negativeButtonText="Neg"
             app:positiveButtonText="Pos"
-
-
             app:summary="Logout from Gerry system"
             app:title="@string/user_logout_title" />
     </PreferenceCategory>

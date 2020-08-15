@@ -1,6 +1,5 @@
 package com.tmeinc.gerrymonitor
 
-import android.os.SystemClock
 import java.io.Closeable
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -103,7 +102,7 @@ class GerrySocket : Closeable {
                 }
             }
             msg.mssMsg.rewind()
-            if (msg.isValid && msg.extSize >= 0 && msg.extSize <= 10000000) {
+            if (msg.isValid && msg.extSize >= 0 && msg.extSize <= GerryMsg.MAX_XDATA) {
                 if (msg.extSize > 0) {
                     msg.xData = ByteBuffer.allocate(msg.extSize)
                     while (msg.xData.hasRemaining()) {
@@ -125,12 +124,10 @@ class GerrySocket : Closeable {
     }
 
     // wait for gerry ACK
-    fun gerryAck(cmd: Int, timeout: Int = 15000): GerryMsg? {
-        // wait for ack, wait up to 10s
-        val waitStart = SystemClock.elapsedRealtime()
-        while (socket.isConnected && SystemClock.elapsedRealtime() - waitStart < timeout) {
+    fun gerryAck(cmd: Int, timeout: Int = 30000): GerryMsg? {
+        while (socket.isConnected) {
             try {
-                val ack = ackQueue.poll(10, TimeUnit.SECONDS)
+                val ack = ackQueue.poll(timeout.toLong(), TimeUnit.MILLISECONDS)
                 if (ack != null) {
                     if (ack.command == cmd) {      // command matched
                         if (ack.ack == GerryMsg.ACK_SUCCESS) {

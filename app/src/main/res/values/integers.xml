@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="max_speed">75</integer>
+    <integer name="min_speed">5</integer>
+
+    <integer name="status_unknown">0</integer>
+    <integer name="status_standing">1</integer>
+    <integer name="status_lying_on_floor">2</integer>
+    <integer name="status_lying_on_bed">3</integer>
+    <integer name="status_sitting">4</integer>
+    <integer name="status_walking">5</integer>
+    <integer name="status_fallen">6</integer>
+    <integer name="status_on_bed">7</integer>
+    <integer name="status_upbody_up_from_bed">8</integer>
+    <integer name="status_feet_off_bed">9</integer>
+    <integer name="status_sitting_on_toilet">10</integer>
+    <integer name="status_sitting_on_sofa">11</integer>
+    <integer name="status_in_shower">12</integer>
+    <integer name="status_unit_empty">13</integer>
+    <integer name="status_standing_on_chair">14</integer>
+
+    <integer name="event_unknown">0</integer>
+    <integer name="event_on_floor">1</integer>
+    <integer name="event_on_floor_no_movement">2</integer>
+    <integer name="event_off_floor">3</integer>
+    <integer name="event_entering">4</integer>
+
+    <integer name="event_leaving">5</integer>
+    <integer name="event_on_bed">6</integer>
+    <integer name="event_off_bed">7</integer>
+    <integer name="event_standing">8</integer>
+    <integer name="event_sitting">9</integer>
+
+    <integer name="event_walking">10</integer>
+    <integer name="event_entering_at_configured_time">11</integer>
+    <integer name="event_leaving_at_configured_time">12</integer>
+    <integer name="event_active_at_night">13</integer>
+    <integer name="event_frequent_bath_use">14</integer>
+
+    <integer name="event_on_bed_not_move_too_long">15</integer>
+    <integer name="event_on_bed_too_long">16</integer>
+    <integer name="event_upper_body_up_from_bed">17</integer>
+    <integer name="event_stay_washroom_too_long">18</integer>
+    <integer name="event_feet_off_bed">19</integer>
+
+    <integer name="event_sitting_on_toilet">20</integer>
+    <integer name="event_sitting_on_sofa">21</integer>
+    <integer name="event_enter_in_shower">22</integer>
+    <integer name="event_enter_unit">23</integer>
+    <integer name="event_leave_unit">24</integer>
+
+    <integer name="event_unit_empty">25</integer>
+    <integer name="event_standing_on_chair">26</integer>
+    <integer name="event_wandering_at_night">27</integer>
+    <integer name="event_stay_in_shower_too_long">28</integer>
+    <integer name="event_sit_on_toilet_too_long">29</integer>
+
+    <integer name="event_sit_on_sofa_too_long">30</integer>
+    <integer name="event_coughing">31</integer>
+    <integer name="event_stop_breathing">32</integer>
+
+</resources>

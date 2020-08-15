@@ -8,8 +8,7 @@ import org.xmlpull.v1.XmlSerializer
 import java.io.StringReader
 import java.io.StringWriter
 
-private fun XmlPullParser.parseXMLtoJson():
-        Any {
+private fun XmlPullParser.parseXMLtoJson(): Any {
     var s = ""
     val o = JSONObject()
     while (next() != XmlPullParser.END_TAG) {
@@ -26,9 +25,7 @@ private fun XmlPullParser.parseXMLtoJson():
                 o.put(key, value)
             }
         } else if (eventType == XmlPullParser.TEXT) {
-            if (!isWhitespace) {
-                s = text
-            }
+            s = text
         } else if (eventType == XmlPullParser.END_DOCUMENT) {
             break
         }
@@ -54,8 +51,9 @@ fun xmlToJson(xml: String): JSONObject {
 private fun XmlPullParser.parseXML(): Any {
     var s = ""
     val o = mutableMapOf<String, Any>()
-    while (next() != XmlPullParser.END_TAG) {
-        if (eventType == XmlPullParser.START_TAG) {
+    var type = next()
+    while (type != XmlPullParser.END_TAG) {
+        if (type == XmlPullParser.START_TAG) {
             val tag = name
             val value = parseXML()
             if (o.containsKey(tag)) {
@@ -68,13 +66,12 @@ private fun XmlPullParser.parseXML(): Any {
             } else {
                 o[tag] = value
             }
-        } else if (eventType == XmlPullParser.TEXT) {
-            if (!isWhitespace) {
-                s = text
-            }
-        } else if (eventType == XmlPullParser.END_DOCUMENT) {
+        } else if (type == XmlPullParser.TEXT) {
+            s = text
+        } else if (type == XmlPullParser.END_DOCUMENT) {
             break
         }
+        type = next()
     }
     return if (o.isEmpty()) {
         s.trim()
@@ -220,18 +217,23 @@ fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
         val child =
             try {
                 when (this) {
+
                     is Map<*, *> -> {
                         this[items[0]]
                     }
+
                     is JSONObject -> {
                         this[items[0]]
                     }
+
                     is List<*> -> {
                         this[items[0].toInt()]
                     }
+
                     is JSONArray -> {
                         this[items[0].toInt()]
                     }
+
                     else -> {
                         null
                     }
@@ -250,18 +252,23 @@ fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
 
 fun Any?.getLeafArray(leafPath: String, separator: String = "/"): List<Any?> {
     return when (val leaf = getLeaf(leafPath, separator)) {
+
         is List<*> -> {
             leaf
         }
+
         is JSONArray -> {
             leaf.toList()
         }
+
         null -> {
             emptyList()
         }
+
         else -> {
             listOf(leaf)
         }
+
     }
 }
 
@@ -269,18 +276,61 @@ fun Any?.getLeafString(leafPath: String, separator: String = "/"): String {
     return getLeaf(leafPath, separator)?.toString() ?: ""
 }
 
+// my ATOI hacked version,
+//      HarrisonLee@tme add something like <unitsub>n,utc_time</unitsub> into XML, which corrupted String.toInt()
+private fun String.toNumber(): Long {
+    var v = 0L
+    var neg = false
+    var len = this.length
+    var i = 0
+
+    // skip white space
+    while (i < len && this[i].isWhitespace())
+        i++
+
+    //  neg/pos sign
+    if (i < len) {
+        if (this[i] == '-') {
+            neg = true
+            i++
+        } else if (this[i] == '+') {
+            i++
+        }
+    }
+
+    // skip white space
+    while (i < len && this[i].isWhitespace())
+        i++
+
+    // get the number
+    while (i < len && this[i] >= '0' && this[i] <= '9') {
+        v = v * 10L + (this[i] - '0')
+        i++
+    }
+
+    return if (neg) {
+        -v
+    } else {
+        v
+    }
+}
+
 fun Any?.getLeafInt(leafPath: String, separator: String = "/"): Int {
     return when (val leaf = getLeaf(leafPath, separator)) {
-        is Number -> {
-            leaf.toInt()
-        }
+
         is String -> {
             try {
-                leaf.trim().toInt()
+                // leaf.trim().toInt()
+                leaf.toNumber().toInt()
             } catch (e: Exception) {
                 0
             }
         }
+
+        is Number -> {
+            leaf.toInt()
+        }
+
         else -> {
             0
         }
@@ -289,16 +339,20 @@ fun Any?.getLeafInt(leafPath: String, separator: String = "/"): Int {
 
 fun Any?.getLeafLong(leafPath: String, separator: String = "/"): Long {
     return when (val leaf = getLeaf(leafPath, separator)) {
-        is Number -> {
-            leaf.toLong()
-        }
+
         is String -> {
             try {
-                leaf.trim().toLong()
+                //leaf.trim().toLong()
+                leaf.toNumber()
             } catch (e: Exception) {
                 0L
             }
         }
+
+        is Number -> {
+            leaf.toLong()
+        }
+
         else -> {
             0L
         }
@@ -307,9 +361,7 @@ fun Any?.getLeafLong(leafPath: String, separator: String = "/"): Long {
 
 fun Any?.getLeafDouble(leafPath: String, separator: String = "/"): Double {
     return when (val leaf = getLeaf(leafPath, separator)) {
-        is Number -> {
-            leaf.toDouble()
-        }
+
         is String -> {
             try {
                 leaf.trim().toDouble()
@@ -317,6 +369,11 @@ fun Any?.getLeafDouble(leafPath: String, separator: String = "/"): Double {
                 0.0
             }
         }
+
+        is Number -> {
+            leaf.toDouble()
+        }
+
         else -> {
             0.0
         }

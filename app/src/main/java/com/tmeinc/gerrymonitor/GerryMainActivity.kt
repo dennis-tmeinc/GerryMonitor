@@ -1,6 +1,5 @@
 package com.tmeinc.gerrymonitor
 
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -10,7 +9,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import com.tmeinc.gerrymonitor.ui.main.PlaceholderFragment
 
@@ -97,25 +95,28 @@ class GerryMainActivity : AppCompatActivity() {
 
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener {
+            /*
             Snackbar.make(it, "Not yet!", Snackbar.LENGTH_LONG)
                 .setAction("Action", null)
                 .show()
-            /*
+
+             */
+
             val intent = Intent(it.context, GerrySettingsActivity::class.java)
                 .putExtra("mdu", "")
             startActivity(intent)
 
-             */
         }
 
         var page: Int
-        getSharedPreferences("Settings", Service.MODE_PRIVATE)
+        getPreferences(Context.MODE_PRIVATE)
             .apply {
                 page = getInt("start_page", 0)
                 if (page == 0) {        // use last closed page
                     page = getInt("last_page", 0)
                 }
             }
+
         tabs.selectTab(tabs.getTabAt(page))
 
     }
@@ -137,10 +138,10 @@ class GerryMainActivity : AppCompatActivity() {
         super.onStop()
         val tabs: TabLayout = findViewById(R.id.tabs)
         tabs.selectedTabPosition
-        getSharedPreferences("Settings", Service.MODE_PRIVATE)
+        getPreferences(Context.MODE_PRIVATE)
             .edit()
             .apply {
-                this.putInt("last_page", tabs.selectedTabPosition)
+                putInt("last_page", tabs.selectedTabPosition)
             }
             .apply()
     }

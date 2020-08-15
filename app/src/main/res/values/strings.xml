@@ -45,32 +45,41 @@
     <string name="event_on_floor_no_movement">On floor no movement</string>
     <string name="event_off_floor">Off floor</string>
     <string name="event_entering">Entering</string>
+
     <string name="event_leaving">Leaving</string>
     <string name="event_on_bed">On bed</string>
     <string name="event_off_bed">Off bed</string>
     <string name="event_standing">Standing</string>
     <string name="event_sitting">Sitting</string>
+
     <string name="event_walking">Walking</string>
     <string name="event_entering_at_configured_time">Entering at configured time</string>
     <string name="event_leaving_at_configured_time">Leaving at configured time</string>
     <string name="event_active_at_night">Active at night</string>
     <string name="event_frequent_bath_use">Frequent bath use</string>
+
     <string name="event_on_bed_not_move_too_long">On bed not move for too long</string>
     <string name="event_on_bed_too_long">On bed for too long</string>
     <string name="event_upper_body_up_from_bed">Upper body up from bed</string>
     <string name="event_stay_washroom_too_long">Stay in washroom too long</string>
     <string name="event_feet_off_bed">Feet off bed</string>
+
     <string name="event_sitting_on_toilet">Sitting on toilet</string>
     <string name="event_sitting_on_sofa">Sitting on sofa</string>
     <string name="event_enter_in_shower">Enter in shower</string>
     <string name="event_enter_unit">Enter unit</string>
     <string name="event_leave_unit">Leave unit</string>
+
     <string name="event_unit_empty">Unit empty</string>
     <string name="event_standing_on_chair">Standing on chair</string>
     <string name="event_wandering_at_night">Wandering at night</string>
     <string name="event_stay_in_shower_too_long">Stay in show too long</string>
     <string name="event_sit_on_toilet_too_long">Sit on toilet too long</string>
+
     <string name="event_sit_on_sofa_too_long">Sit on sofa too long</string>
+    <string name="event_coughing">Coughing</string>
+    <string name="event_stop_breathing">Stop breathing</string>
+
     <string name="title_activity_gerry_live">Gerry Live</string>
     <string name="tab_text_1">Tab 1</string>
     <string name="tab_text_2">Tab 2</string>
@@ -81,25 +90,24 @@
 
     <!-- Preference Titles -->
     <string name="events_header">Events</string>
-    <string name="event_duration_title">Alerts/Events Display Duration</string>
+    <string name="event_duration_title">Events/Alerts Display Duration</string>
 
+    <string name="event_filter_title">Events/Alerts Filter</string>
+    <string name="event_filter_summary">Select what alerts/events to display</string>
 
-    <string name="sync_header">Sync</string>
+    <string name="alert_notification_title">Enable Alerts Notification</string>
+    <string name="alert_notification_filter_title">Alerts Notification</string>
+    <string name="alert_notification_filter_summary">Select what alerts send notification</string>
+
 
     <string name="user_header">User account</string>
     <string name="user_logout_title">Logout</string>
-
 
     <!-- Messages Preferences -->
     <string name="signature_title">Your signature</string>
     <string name="reply_title">Default reply action</string>
 
-    <!-- Sync Preferences -->
-    <string name="sync_title">Sync email periodically</string>
-    <string name="attachment_title">Download incoming attachments</string>
-    <string name="attachment_summary_on">Automatically download attachments for incoming emails
-    </string>
     <string name="attachment_summary_off">Only download attachments when manually requested</string>
-    <string name="title_activity_gerry_settings">GerrySettingsActivity</string>
+    <string name="title_activity_gerry_settings">Gerry Settings</string>
 
 </resources>
