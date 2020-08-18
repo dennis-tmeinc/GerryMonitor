@@ -8,6 +8,7 @@ import org.xmlpull.v1.XmlSerializer
 import java.io.StringReader
 import java.io.StringWriter
 
+
 private fun XmlPullParser.parseXMLtoJson(): Any {
     var s = ""
     val o = JSONObject()
@@ -214,24 +215,25 @@ fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
     }
     val items = leafPath.split(separator, limit = 2)
     if (items.isNotEmpty()) {
+        val i0 = items[0]
         val child =
             try {
                 when (this) {
 
                     is Map<*, *> -> {
-                        this[items[0]]
+                        this[i0]
                     }
 
                     is JSONObject -> {
-                        this[items[0]]
+                        this[i0]
                     }
 
                     is List<*> -> {
-                        this[items[0].toInt()]
+                        this[i0.toInt()]
                     }
 
                     is JSONArray -> {
-                        this[items[0].toInt()]
+                        this[i0.toInt()]
                     }
 
                     else -> {
@@ -276,16 +278,16 @@ fun Any?.getLeafString(leafPath: String, separator: String = "/"): String {
     return getLeaf(leafPath, separator)?.toString() ?: ""
 }
 
-// my ATOI hacked version,
-//      HarrisonLee@tme add something like <unitsub>n,utc_time</unitsub> into XML, which corrupted String.toInt()
+// my ATOI hack ,
+//      HarrisonLee@tme put something like <unitsub>n,utc_time</unitsub> into XML, which corrupted String.toInt()
 private fun String.toNumber(): Long {
     var v = 0L
     var neg = false
-    var len = this.length
+    val len = this.length
     var i = 0
 
-    // skip white space
-    while (i < len && this[i].isWhitespace())
+    // skip space
+    while (i < len && this[i] <= ' ')
         i++
 
     //  neg/pos sign
@@ -298,8 +300,8 @@ private fun String.toNumber(): Long {
         }
     }
 
-    // skip white space
-    while (i < len && this[i].isWhitespace())
+    // skip space
+    while (i < len && this[i] <= ' ')
         i++
 
     // get the number

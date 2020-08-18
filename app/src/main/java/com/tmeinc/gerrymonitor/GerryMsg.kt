@@ -23,12 +23,11 @@ import java.util.zip.CRC32
  *    uint32_t crc;    // crc of this struct excluding this field
  *  };
  **/
-
-class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
+class GerryMsg() {
 
     companion object {
         // msg structure fields offset
-        const val offset_id = 0
+        const val offset_id0 = 0
         const val offset_id1 = 1
         const val offset_version = 2
         const val offset_command = 3
@@ -85,24 +84,11 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         // max xdata size
         const val MAX_XDATA = 10000000
 
+        private val zeroBuffer = ByteBuffer.allocate(0)
     }
 
     val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
-    var xData: ByteBuffer = ByteBuffer.allocate(0)
-
-    init {
-        mssMsg.order(ByteOrder.LITTLE_ENDIAN)
-        mssMsg.put(offset_id, 'M'.toByte())
-        mssMsg.put(offset_id1, 'S'.toByte())
-        mssMsg.put(offset_version, 1.toByte())           // version
-        mssMsg.put(offset_command, cmd.toByte())         // cmd
-        mssMsg.put(offset_ack, 0.toByte())           // request, ask = 0
-        mssMsg.putInt(offset_extSize, 0)          // ext_datasize
-    }
-
-    constructor(cmd: Int, xml: String?) : this(cmd) {
-        setData(xml)
-    }
+    var xData: ByteBuffer = zeroBuffer
 
     var command: Int
         get() = mssMsg[offset_command].toInt() and 0xFF
@@ -147,28 +133,29 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         }
 
     val isValid
-        get() = mssMsg[offset_id] == 'M'.toByte() && mssMsg[offset_id1] == 'S'.toByte()
-
-    fun setData(data: String? = null) {
-        if (data != null && data.isNotBlank()) {
-            xData = ByteBuffer.wrap(data.toByteArray())
-        } else {
-            xData.limit(0)
-        }
-        extSize = xData.limit()
-    }
-
-    fun setData(data: Map<*, *>) {
-        setData(data.toXml())
-    }
+        get() = mssMsg[offset_id0] == 'M'.toByte()
+                && mssMsg[offset_id1] == 'S'.toByte()
 
     // XML data as string (XML)
-    val xml: String
+    var xml: String
         get() = String(xData.array(), xData.arrayOffset(), xData.limit())
+        set(v) {
+            if (v.isEmpty()) {
+                xData.limit(0)
+            } else {
+                xData = ByteBuffer.wrap(v.toByteArray())
+            }
+            extSize = xData.limit()
+        }
 
     // XML data as obj (Map)
     val xmlObj: Any
         get() = xml.xmlObj()
+
+    fun clearData() {
+        xData.limit(0)
+        extSize = 0
+    }
 
     // generate crc checksum
     fun crc() {
@@ -189,6 +176,22 @@ class GerryMsg(cmd: Int = CLIENT_KEEPALIVE) {
         crc.update(mssMsg.array(), mssMsg.arrayOffset(), offset_crc)   // exclude crc field itself
         mssMsg.putInt(offset_crc, crc.value.toInt())
     }
+
+    init {
+        mssMsg.order(ByteOrder.LITTLE_ENDIAN)
+        mssMsg.put(offset_id0, 'M'.toByte())
+        mssMsg.put(offset_id1, 'S'.toByte())
+        mssMsg.put(offset_version, 1.toByte())          // version
+        ack = 0                                         // request, ack = 0
+        reason = 0                                      // request, ack = 0
+        extSize = 0                                     // ext_size
+    }
+
+    constructor(cmd: Int, xmlStr: String? = null) : this() {
+        command = cmd
+        xml = xmlStr ?: ""
+    }
+
 }
 
 // status/event icons

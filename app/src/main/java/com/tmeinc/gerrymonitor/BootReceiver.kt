@@ -22,7 +22,12 @@ class BootReceiver : BroadcastReceiver() {
             }
             else -> {
                 // Start GerryService
-                context.startService(Intent(context, GerryService::class.java))
+                val serviceIntent = Intent(context, GerryService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent);
+                }
             }
         }
     }

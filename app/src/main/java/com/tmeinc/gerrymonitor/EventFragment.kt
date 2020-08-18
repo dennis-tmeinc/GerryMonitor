@@ -138,7 +138,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
         val eventStrSet = defaultSharedPreferences.getStringSet("events_display", null)
         val eventSet = mutableSetOf<Int>()
-        if( eventStrSet != null ) {
+        if (eventStrSet != null) {
             for (s in eventStrSet) {
                 eventSet.add(s.toInt())
             }
@@ -146,8 +146,8 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
         // filtering goes here
         displayList = eventList.filter {
-            eventSet.isEmpty() or
-            eventSet.contains(it.type)
+            eventSet.isEmpty() ||
+                    it.type in eventSet
         }
 
         displayAdapter.notifyDataSetChanged()
@@ -186,23 +186,27 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
     }
 
     private fun updateList() {
-        var keys = synchronized(GerryService.gerryMDUs) {
+        val mduSet = synchronized(GerryService.gerryMDUs) {
             GerryService.gerryMDUs.keys
         }
-        if (keys.isNotEmpty()) {
-            var getListCommand = GerryMsg.CLIENT_GET_EVENTS
-            if (type == ALERT_LIST) {
-                getListCommand = GerryMsg.CLIENT_GET_ALERTS
-            }
+        if (mduSet.isNotEmpty()) {
+            val getListCommand =
+                if (type == ALERT_LIST) {
+                    GerryMsg.CLIENT_GET_ALERTS
+                } else {
+                    GerryMsg.CLIENT_GET_EVENTS
+                }
 
             val now = System.currentTimeMillis() / 1000
-            var start = if (eventList.isNotEmpty()) {
-                eventList[0].ts + 1
-            } else {
-                now - eventDuration * 24 * 3600
-            }
+            val start =
+                if (eventList.isNotEmpty()) {
+                    eventList[0].ts + 1
+                } else {
+                    now - eventDuration * 24 * 3600
+                }
+
             val obj = mapOf(
-                "mduSet" to keys,
+                "mduSet" to mduSet,
                 "start" to start,
                 "end" to (now + 24 * 3600),
                 "command" to getListCommand,
@@ -214,6 +218,12 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
                 ?.obtainMessage(GerryService.MSG_GERRY_GET_EVENTS, obj)
                 ?.sendToTarget()
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
+        eventDuration = 0
     }
 
     override fun onCreateView(
@@ -235,9 +245,6 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             view.addItemDecoration(itemDecoration)
         }
 
-        defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
-        eventDuration = 0
-
         return view
     }
 
@@ -245,8 +252,9 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
         super.onResume()
         updateRun = true
 
-        val newEventDuration = defaultSharedPreferences.getString("event_duration", "30")?.toInt() ?: 30
-        if( newEventDuration != eventDuration) {
+        val newEventDuration =
+            defaultSharedPreferences.getString("event_duration", "30")?.toInt() ?: 30
+        if (newEventDuration != eventDuration) {
             eventDuration = newEventDuration
             eventList.clear()
         }

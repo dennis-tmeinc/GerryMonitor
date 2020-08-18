@@ -43,7 +43,7 @@ class GerrySocket : Closeable {
                                 if (!commandListener(msg)) {       // if success, response msg is set
                                     msg.ack = GerryMsg.ACK_FAIL
                                     msg.reason = GerryMsg.REASON_NONE
-                                    msg.setData()
+                                    msg.clearData()
                                 }
                                 sendGerryMsg(msg)
                             } else {

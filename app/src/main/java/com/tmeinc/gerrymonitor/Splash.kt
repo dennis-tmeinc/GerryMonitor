@@ -48,7 +48,12 @@ class Splash : Activity() {
                 ?.sendEmptyMessage(GerryService.MSG_GERRY_INIT)
         } else {
             // Start GerryService
-            applicationContext.startService(Intent(applicationContext, GerryService::class.java))
+            val serviceIntent = Intent(this, GerryService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent);
+            }
         }
 
     }
