@@ -17,12 +17,15 @@ fun JSONArray.toList(): List<Any> {
             is JSONObject -> {
                 list.add(v.toMap())
             }
+
             is JSONArray -> {
                 list.add(v.toList())
             }
+
             JSONObject.NULL -> {        // don't support JSON NULL, just skip it
                 // list.add( null )
             }
+
             else -> {
                 list.add(v)
             }
@@ -35,15 +38,20 @@ fun JSONObject.toMap(): Map<String, Any> {
     val map = mutableMapOf<String, Any>()
     for (k in keys()) {
         when (val v = get(k)) {
+
             is JSONObject -> {
                 map[k] = v.toMap()
             }
+
             is JSONArray -> {
                 map[k] = v.toList()
             }
+
             JSONObject.NULL -> {
-                // map[k]=null, just skip it
+                // ? map[k]=null, just skip it
             }
+
+            // string or number
             else -> {
                 map[k] = v
             }
@@ -59,8 +67,8 @@ allow self signed https
     ref: https://developer.android.com/training/articles/security-ssl
     ref: https://stackoverflow.com/questions/3761737/https-get-ssl-with-android-and-self-signed-server-certificate
  */
-fun setUnsafeHttps(connection: URLConnection) {
-    if (connection is HttpsURLConnection) {
+fun URLConnection.allowUnsafe() {
+    if (this is HttpsURLConnection) {
 
         val ctx = SSLContext.getInstance("TLS")
         ctx.init(null, arrayOf<TrustManager>(
@@ -85,16 +93,16 @@ fun setUnsafeHttps(connection: URLConnection) {
             }
         ), null)
 
-        connection.sslSocketFactory = ctx.socketFactory
-        connection.hostnameVerifier = HostnameVerifier { _, _ -> true }     // all true
+        sslSocketFactory = ctx.socketFactory
+        hostnameVerifier = HostnameVerifier { _, _ -> true }     // all true
     }
 }
 
 // get self-signed https contents, only used for connection to my own server
-fun getHttpContentUnSafe(url: String): String {
+fun getHttpContentUnsafe(url: String): String {
     try {
         val c = URI(url).toURL().openConnection()
-        setUnsafeHttps(c)
+        c?.allowUnsafe()
         val s = BufferedInputStream(c.getInputStream())
         val bufStream = ByteArrayOutputStream()
         var r = s.read()

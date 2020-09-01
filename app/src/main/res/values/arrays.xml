@@ -42,6 +42,8 @@
 
     <string-array name="event_names">
 
+        <item name="event_mdu_disconnected">Mdu disconnected</item>
+
         <item name="event_on_floor">On floor</item>
         <item name="event_on_floor_no_movement">On floor no movement</item>
         <item name="event_off_floor">Off floor</item>
@@ -83,6 +85,8 @@
     </string-array>
 
     <string-array name="event_types">
+
+        <item name="event_mdu_disconnected">0</item>
 
         <item name="event_on_floor">1</item>
         <item name="event_on_floor_no_movement">2</item>

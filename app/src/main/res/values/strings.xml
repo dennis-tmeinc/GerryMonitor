@@ -27,6 +27,7 @@
     <string name="tab_title_4">Status2</string>
 
     <string name="status_unknown">Unknown status</string>
+    <string name="status_not_ready">Not ready</string>
     <string name="status_standing">Standing</string>
     <string name="status_lying_on_floor">Lying on floor</string>
     <string name="status_lying_on_bed">Lying on bed</string>
@@ -43,6 +44,7 @@
     <string name="status_standing_on_chair">Standing on chair</string>
 
     <string name="event_unknown">Unknown event</string>
+    <string name="event_mdu_disconnect">Mdu disconnected</string>
     <string name="event_on_floor">On floor</string>
     <string name="event_on_floor_no_movement">On floor no movement</string>
     <string name="event_off_floor">Off floor</string>

@@ -180,7 +180,7 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
             // repeat
             mainHandler.postDelayed({
                 updateList()
-            }, 60000)
+            }, 30000)
         }
 
     }

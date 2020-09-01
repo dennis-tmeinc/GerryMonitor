@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.*
 import android.util.Log
 import android.widget.Toast
@@ -29,7 +33,7 @@ import java.util.concurrent.TimeUnit
 
 // main thread (UI) handler
 val mainHandler = Handler(Looper.getMainLooper())
-
+// cached threads for all application
 val executorService = Executors.newCachedThreadPool()!!
 
 class GerryService : Service() {
@@ -39,10 +43,11 @@ class GerryService : Service() {
         // main thread handler
         const val RUN_STOP = 0                  // not running
         const val RUN_START = 1                 // starting service
-        const val RUN_USER_LOGIN = 2            // require use login screen
-        const val RUN_CONNECT = 3               // connecting
-        const val RUN_LOGIN_SUCCESS = 4         // login succeed
-        const val RUN_RUN = 5                   // service running
+        const val RUN_NO_NETWORK = 2              // no internet
+        const val RUN_USER_LOGIN = 3            // require use login screen
+        const val RUN_CONNECT = 4               // connecting
+        const val RUN_LOGIN_SUCCESS = 5         // login succeed
+        const val RUN_RUN = 6                   // service running
 
         const val ID_GERRY_SERVICE = 100
         const val ID_GERRY_ALERTS = 101
@@ -66,14 +71,13 @@ class GerryService : Service() {
 
         const val serviceName = "gerryService"
         const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
-        const val gerryDefaultServer = "64.40.243.196"
+        const val gerryDefaultServer = "207.112.107.194"
         const val gerryDefaultPort = 48005
 
         var instance: GerryService? = null
         var gerryRun = RUN_STOP
         var clientID = ""
         var gerryClient = emptyMap<String, Any>()
-
 
         // list of gerry mdu
         val gerryMDUs = mutableMapOf<String, Any>()
@@ -88,7 +92,7 @@ class GerryService : Service() {
     lateinit var gerryPreferences: SharedPreferences
     lateinit var gerryHandler: Handler
     private var socket = GerrySocket()
-
+    private var statusCallback: ((String?) -> Unit)? = null
 
     // Gerry server command callback
     fun cbGerryCommand(msg: GerryMsg): Boolean {
@@ -166,10 +170,10 @@ class GerryService : Service() {
             )
 
             // forground service notification channel
-             notificationChannelId = getString(R.string.notification_service_name)
-             descriptionText = "Gerry Service Notification"
+            notificationChannelId = getString(R.string.notification_service_name)
+            descriptionText = "Gerry Service Notification"
 
-             channel =
+            channel =
                 NotificationChannel(
                     notificationChannelId,
                     notificationChannelId,
@@ -254,38 +258,62 @@ class GerryService : Service() {
         return builder.build()
     }
 
+    private var serviceForeground = false
+
     private fun showServiceNotification() {
         val pendingIntent: PendingIntent =
             Intent(this, GerryMainActivity::class.java).let {
                 it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                PendingIntent.getActivity(this,
+                PendingIntent.getActivity(
+                    this,
                     0,
                     it,
-                    0)
+                    0
+                )
             }
 
         val notification =
             NotificationCompat.Builder(this, getString(R.string.notification_service_name))
                 .setContentTitle(getString(R.string.notification_app_name))
                 .setContentText(
-                    if (gerryRun == RUN_RUN)
-                        "Gerry Service Running"
-                    else
-                        "Gerry Service Started"
+                    when (gerryRun) {
+                        RUN_STOP -> "Gerry service stopped"
+                        RUN_START -> "Gerry service starting"
+                        RUN_NO_NETWORK -> "No Internet"
+                        RUN_LOGIN_SUCCESS -> "Gerry service connected"
+                        RUN_RUN -> "Gerry service connected"
+                        else -> {
+                            "Gerry service disconnected"
+                        }
+                    }
                 )
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build()
 
-        startForeground(ID_GERRY_SERVICE, notification)
+        if (serviceForeground) {
+            with(NotificationManagerCompat.from(this)) {
+                // each event type has same notificationId
+                notify(ID_GERRY_SERVICE, notification)
+            }
+        } else {
+            serviceForeground = true
+            startForeground(ID_GERRY_SERVICE, notification)
+        }
     }
 
     private fun showAlertNotification(ai: Map<*, *>) {
 
-        val eventType = ai.getLeafInt("type")
+        var eventType = ai.getLeafInt("type")
         // check unsupported events
-        if (eventType <= 0 || eventType >= event_texts.size) {
+
+        // special case of MDU disconnected
+        if (eventType == 10000) {
+            eventType = 0
+        }
+
+        if (eventType < 0 || eventType >= event_texts.size) {
             return
         }
 
@@ -368,14 +396,9 @@ class GerryService : Service() {
                         this["status_mdup"] = mdup
                     }
 
-                    // fake data for debugging
-                    // this["status_mdup"] = objGetLeaf(xmlToMap(fakeStatusXml), "mdup")
-
-                    val cb = this["status_callback"]
-                    if (this["status"] == "Run" && cb is Function<*>) {
+                    if (this["status"] == "Run") {
                         mainHandler.post {
-                            @Suppress("UNCHECKED_CAST")
-                            (cb as () -> Unit)()
+                            statusCallback?.invoke(mduId)
                         }
                     }
                 }
@@ -493,6 +516,30 @@ class GerryService : Service() {
         return null
     }
 
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            super.onAvailable(network)
+
+            if (gerryRun in RUN_START..RUN_CONNECT) {
+                gerryHandler.sendEmptyMessage(MSG_GERRY_INIT)
+            }
+
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            gerryHandler.sendEmptyMessage(MSG_GERRY_KEEP_ALIVE)
+        }
+
+    }
+
+    private fun isNetworkActive(): Boolean {
+        // check internet connectivity before run service
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = cm.activeNetworkInfo
+        return activeNetwork?.isConnectedOrConnecting == true
+    }
+
     // GERRY Events
 
     // init gerry service , in service thread
@@ -501,6 +548,22 @@ class GerryService : Service() {
 
         if (socket.isConnected && gerryRun == RUN_RUN)        // already successfully connected
             return
+
+        // check internet connectivity before run service
+        if (!isNetworkActive()) {
+            if (gerryRun > 0)
+                gerryRun = RUN_NO_NETWORK
+            mainHandler.post {
+                // show gerry service notification
+                showServiceNotification()
+
+            }
+            return
+        }
+
+        // try login
+        if (gerryRun > 0)
+            gerryRun = RUN_CONNECT
 
         // read gerry clients info from firebase
         for (loop in 0..10) {
@@ -522,15 +585,16 @@ class GerryService : Service() {
             Thread.sleep(500)
         }
 
-        // try login
-        if (gerryRun > 0)
-            gerryRun = RUN_START
+        // Proceed login
         gerryHandler.sendEmptyMessage(MSG_GERRY_LOGIN)
     }
 
     private fun gerryLogin(msg: Message) {
         if (socket.isConnected && gerryRun == RUN_RUN)        // already successfully connected
             return
+
+        if (gerryRun > 0)
+            gerryRun = RUN_USER_LOGIN
 
         socket.close()
 
@@ -541,16 +605,12 @@ class GerryService : Service() {
         }
 
         if (username.isBlank() || clientID.isBlank()) {      // no user id
-            gerryRun = RUN_USER_LOGIN
             return
         }
 
-        if (gerryRun > 0)
-            gerryRun = RUN_CONNECT
-
         val s = gerryConnect()
         if (s == null) {
-            gerryRun = RUN_USER_LOGIN        // wrong clientId
+            // wrong clientId
             mainHandler.post {
                 Toast.makeText(
                     this@GerryService,
@@ -575,7 +635,9 @@ class GerryService : Service() {
                     cbGerryCommand(it)
             }
             // refresh MDUs list, will set gerryRun to RUN_RUN
-            gerryMDUs.clear()
+            synchronized(gerryMDUs) {
+                gerryMDUs.clear()
+            }
             gerryHandler.sendEmptyMessage(MSG_GERRY_GET_MDU_LIST)
 
             // save success login info
@@ -593,14 +655,6 @@ class GerryService : Service() {
                     putInt("versionCode", vInfo.versionCode)
                     apply()
                 }
-                Toast.makeText(
-                    this@GerryService,
-                    "Gerry Service Started!",
-                    Toast.LENGTH_LONG
-                ).show()
-
-                // show gerry running
-                showServiceNotification()
 
             }
         }
@@ -609,12 +663,12 @@ class GerryService : Service() {
     // request gerry server logout
     private fun gerryLogout(msg: Message) {
         if (gerryRun > 0) {
+            gerryRun = RUN_USER_LOGIN
             // close socket, try reconnect
             if (socket.isOpen)
                 socket.close()
             username = ""
             password = ""
-            gerryRun = RUN_USER_LOGIN
             synchronized(gerryMDUs) {
                 gerryMDUs.clear()
             }
@@ -632,9 +686,6 @@ class GerryService : Service() {
                     @Suppress("UNCHECKED_CAST")
                     (cb as () -> Unit)()
                 }
-
-                // show gerry running
-                showServiceNotification()
             }
         }
     }
@@ -644,8 +695,26 @@ class GerryService : Service() {
     private fun gerryKeepAlive(msg: Message) {
         if (!socket.isConnected || socket.gerryCmd(GerryMsg.CLIENT_KEEPALIVE) == null) {
             // connection failed, try reconnect
-            gerryRun = RUN_CONNECT
-            gerryHandler.sendEmptyMessageDelayed(MSG_GERRY_LOGIN, 5000)
+            if (isNetworkActive()) {
+                gerryRun = RUN_CONNECT
+                gerryHandler.sendEmptyMessageDelayed(MSG_GERRY_LOGIN, 5000)
+            } else {
+                gerryRun = RUN_NO_NETWORK
+                // clear all mdu status
+                mainHandler.post {
+                    for (key in gerryMDUs.keys) {
+                        val mdu = gerryMDUs[key]
+                        if (mdu is MutableMap<*, *>) {
+                            mdu.remove("status_mdup")
+                            statusCallback?.invoke(key)
+                        }
+                    }
+                }
+            }
+
+            mainHandler.post {
+                showServiceNotification()
+            }
         }
         gerryHandler.removeMessages(MSG_GERRY_KEEP_ALIVE)
         gerryHandler.sendEmptyMessageDelayed(
@@ -680,6 +749,9 @@ class GerryService : Service() {
             if (gerryRun > 0)
                 gerryRun = RUN_RUN
 
+            // show gerry connected notification
+            showServiceNotification()
+
             gerryHandler.sendEmptyMessage(MSG_GERRY_EVENT_START)         // start receiving alerts
 
         } else {
@@ -690,25 +762,19 @@ class GerryService : Service() {
 
 
     // start event/alert
-    private fun gerryEventStart(@Suppress("UNUSED_PARAMETER") msg: Message) {
-        for (mdu in gerryMDUs.keys) {
-            // send  CLIENT_SUBJECT_STATUS_START, for events, as Togonrui email, date: 2020-07-02
-            // Status is always enable on main socket to receive alerts
-            socket.gerryCmd(
-                GerryMsg.CLIENT_SUBJECT_STATUS_START,
-                mapOf(
-                    "mclient" to mapOf(
-                        "mdu" to mdu
-                    )
-                )
-            )
-        }
+    private fun gerryEventStart(msg: Message) {
+        // send  CLIENT_SUBJECT_STATUS_START, for events, as Togonrui email, date: 2020-07-02
+        // Status is always enable on main socket to receive alerts
+        gerryStatusStart(msg)
     }
 
     // start gerry live status
     private fun gerryStatusStart(msg: Message) {
         if (msg.obj is Map<*, *>) {
-            val mdu = msg.obj.getLeafString("mdu")
+            @Suppress("UNCHECKED_CAST")
+            statusCallback = msg.obj.getLeaf("callback") as ((String?) -> Unit)?
+        }
+        for (mdu in gerryMDUs.keys) {
             val ack = socket.gerryCmd(
                 GerryMsg.CLIENT_SUBJECT_STATUS_START, mapOf(
                     "mclient" to mapOf(
@@ -716,49 +782,42 @@ class GerryService : Service() {
                     )
                 )
             )
-            synchronized(gerryMDUs) {
-                if (gerryMDUs.containsKey(mdu)) {
-                    @Suppress("UNCHECKED_CAST")
-                    (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
-                        val cb = msg.obj.getLeaf("callback")
-                        this["status_callback"] = cb
-                        if (ack != null) {
-                            this["status"] = "Run"
-                            val mdup = ack.xmlObj.getLeaf("mclient/mdup")
-                            if (mdup == null) {
-                                remove("status_mdup")
-                            } else {
-                                this["status_mdup"] = mdup
-                            }
-                        } else {
-                            // failed
-                            this["status"] = "Failed"
-                            remove("status_mdup")
-                        }
-                        if (cb is Function<*>) {
-                            mainHandler.post {
-                                @Suppress("UNCHECKED_CAST")
-                                (cb as () -> Unit)()
-                            }
-                        }
+            @Suppress("UNCHECKED_CAST")
+            (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
+                if (ack != null) {
+                    if (msg.obj is Map<*, *>) {
+                        this["status"] = "Run"
                     }
+                    val mdup = ack.xmlObj.getLeaf("mclient/mdup")
+                    if (mdup == null) {
+                        remove("status_mdup")
+                    } else {
+                        this["status_mdup"] = mdup
+                    }
+                } else {
+                    // failed
+                    this["status"] = "Failed"
+                    remove("status_mdup")
                 }
+            }
+        }
+
+        mainHandler.post {
+            for (key in gerryMDUs.keys) {
+                statusCallback?.invoke(key)
             }
         }
     }
 
     // stop status reports, never send CLIENT_SUBJECT_STATUS_STOP
+    @Suppress("UNUSED_PARAMETER")
     private fun gerryStatusStop(msg: Message) {
-
-        if (msg.obj is Map<*, *>) {
-            val mdu = msg.obj.getLeafString("mdu")
-            synchronized(gerryMDUs) {
-                if (gerryMDUs.containsKey(mdu)) {
-                    @Suppress("UNCHECKED_CAST")
-                    (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
-                        this["status"] = "Stopped"
-                        remove("status_callback")
-                    }
+        statusCallback = null
+        synchronized(gerryMDUs) {
+            for (mdu in gerryMDUs.keys) {
+                @Suppress("UNCHECKED_CAST")
+                (gerryMDUs[mdu] as MutableMap<String, Any?>).apply {
+                    this["status"] = "Stopped"
                 }
             }
         }
@@ -916,11 +975,19 @@ class GerryService : Service() {
                     MSG_GERRY_LOGIN -> {
                         // request gerry server login
                         gerryLogin(msg)
+                        mainHandler.post {
+                            // show gerry running
+                            showServiceNotification()
+                        }
                     }
 
                     MSG_GERRY_LOGOUT -> {
                         // request gerry server logout
                         gerryLogout(msg)
+                        mainHandler.post {
+                            // show gerry running
+                            showServiceNotification()
+                        }
                     }
 
                     MSG_GERRY_KEEP_ALIVE -> {
@@ -995,7 +1062,7 @@ class GerryService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     applicationContext.startForegroundService(serviceIntent)
                 } else {
-                    applicationContext.startService(serviceIntent);
+                    applicationContext.startService(serviceIntent)
                 }
             }
 
@@ -1069,7 +1136,6 @@ class GerryService : Service() {
         HandlerThread(serviceName).apply {
             start()
             gerryHandler = GerryServiceHandler(looper)
-            gerryHandler.sendEmptyMessage(MSG_GERRY_INIT)
         }
 
         // start background periodic works (keep alive)
@@ -1113,12 +1179,20 @@ class GerryService : Service() {
         }
         */
 
-    }
+        // register network connectivity call back
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        cm.registerNetworkCallback(request, networkCallback)
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mainHandler.post {
             showServiceNotification()
         }
+
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return START_STICKY
     }
 
@@ -1133,6 +1207,11 @@ class GerryService : Service() {
         socket.close()
         gerryHandler.looper.quitSafely()
         Toast.makeText(this, "Gerry Service Stopped!", Toast.LENGTH_LONG).show()
+        showServiceNotification()
+
+        // remove network connectivity call back
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.unregisterNetworkCallback(networkCallback)
     }
 }
 
@@ -1213,7 +1292,7 @@ fun gerryFileService(req: String): ByteArray {
         val bufStream = ByteArrayOutputStream()
         val uri = URI("${fileService}?${req}")
         val c = uri.toURL().openConnection()
-        setUnsafeHttps(c)
+        c?.allowUnsafe()
         val s = BufferedInputStream(c.getInputStream())
         var r = s.read()
         while (r >= 0) {
@@ -1235,7 +1314,8 @@ fun gerryGetFile(path: String): ByteArray {
 }
 
 fun gerryDB(sql: String): JSONObject {
-    val host = GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/host")
+    val host =
+        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/host")
     val username =
         GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/username")
     val password =

@@ -84,11 +84,10 @@ class GerryMsg() {
         // max xdata size
         const val MAX_XDATA = 10000000
 
-        private val zeroBuffer = ByteBuffer.allocate(0)
     }
 
     val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
-    var xData: ByteBuffer = zeroBuffer
+    var xData: ByteBuffer = ByteBuffer.allocate(0)
 
     var command: Int
         get() = mssMsg[offset_command].toInt() and 0xFF
@@ -233,7 +232,7 @@ val status_icons = arrayOf(
 )
 
 val status_texts = arrayOf(
-    R.string.status_unknown,
+    R.string.status_not_ready,
     R.string.status_standing,               //    STANDING = 1,
     R.string.status_lying_on_floor,         //    LYING_ON_FLOOR = 2,
     R.string.status_lying_on_bed,           //    LYING_ON_BED = 3,
@@ -286,7 +285,7 @@ enum event_type {
 
  */
 val event_icons = arrayOf(
-    R.drawable.icon_gerry_event,
+    R.drawable.icon_gerry_event,            // I use this for mdu disconnecting ,
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR = 1,
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR_NO_MOVEMENT = 2,
     R.drawable.icon_getting_up_from_floor,  //  OFF_FLOOR = 3,
@@ -330,7 +329,7 @@ val event_icons = arrayOf(
 )
 
 val event_texts = arrayOf(
-    R.string.event_unknown,
+    R.string.event_mdu_disconnect,      // I use event 0 for mdu disconnected ( event type = 10000 from Server Message)
     R.string.event_on_floor,                        //  ON_FLOOR = 1,
     R.string.event_on_floor_no_movement,            //  ON_FLOOR_NO_MOVEMENT = 2,
     R.string.event_off_floor,                       //  OFF_FLOOR = 3,

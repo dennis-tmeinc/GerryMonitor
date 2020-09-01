@@ -21,6 +21,7 @@ class GerrySocket : Closeable {
 
     override fun close() {
         socket.close()
+        ackQueue.clear()
     }
 
     var commandListener: (GerryMsg?) -> Boolean = { false }

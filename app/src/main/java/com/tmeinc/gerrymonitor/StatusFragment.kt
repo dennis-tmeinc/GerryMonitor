@@ -21,10 +21,11 @@ class StatusFragment : Fragment() {
 
     class UnitStatus(val mduId: String) {
 
-        private val mdu =
-            synchronized(GerryService.gerryMDUs) {
-                GerryService.gerryMDUs[mduId]
-            }
+        private val mdu: Any?
+            get() =
+                synchronized(GerryService.gerryMDUs) {
+                    GerryService.gerryMDUs[mduId]
+                }
 
         val isReady: Boolean
             get() = mdu.getLeaf("status_mdup") != null
@@ -119,21 +120,23 @@ class StatusFragment : Fragment() {
                                 status_texts[si]
                             )
 
+                            val statusTimeText: TextView = statusSub.findViewById(R.id.statusTime)
                             if (subSplit.count() > 1) {
                                 try {
+
                                     val datetime = Date(subSplit[1].trim().toLong() * 1000L)
                                     val datetimeStr = SimpleDateFormat.getDateTimeInstance(
                                         DateFormat.DEFAULT,
                                         DateFormat.DEFAULT
                                     ).format(datetime)
-                                    (statusSub.findViewById(R.id.statusTime) as TextView).text =
+                                    statusTimeText.text =
                                         datetimeStr
                                 } catch (pe: Exception) {
-                                    (statusSub.findViewById(R.id.statusTime) as View).visibility =
+                                    statusTimeText.visibility =
                                         View.GONE
                                 }
                             } else
-                                (statusSub.findViewById(R.id.statusTime) as View).visibility =
+                                statusTimeText.visibility =
                                     View.GONE
                             tableRow.addView(statusSub)
                         }
@@ -147,11 +150,11 @@ class StatusFragment : Fragment() {
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             init {
-                val backgrondColor = listOf(
+                val backgroundColor = listOf(
                     R.color.material_on_background_emphasis_high_type,
                     R.color.colorAccent
                 )
-                view.setBackgroundResource(backgrondColor[1])
+                view.setBackgroundResource(backgroundColor[1])
             }
 
             val location: TextView = view.findViewById(R.id.location)
@@ -162,38 +165,47 @@ class StatusFragment : Fragment() {
         }
     }
 
+    private var statusRun = false
     private val statusListAdapter = StatusListAdapter()
 
     // status update callback
-    private fun statusCB(u: UnitStatus) {
-        val pos = statusList.indexOf(u)
-        if (pos >= 0) {
-            statusListAdapter.notifyItemChanged(pos)
+    private fun statusCB(mduId: String?) {
+        if (!statusRun)
+            return
+        if (mduId == null) {
+            statusList.clear()
+            statusListAdapter.notifyDataSetChanged()
+        } else {
+            var pos = 0
+            while (pos < statusList.size) {
+                val s = statusList[pos]
+                if (s.mduId == mduId) {
+                    statusListAdapter.notifyItemChanged(pos)
+                    return
+                }
+                pos++
+            }
+
+            // add new mdu
+            statusList.add(UnitStatus(mduId))
+            statusListAdapter.notifyDataSetChanged()
         }
     }
 
     private fun startStatus() {
-        statusList.clear()
-        synchronized(GerryService.gerryMDUs) {
-            for (mdu in GerryService.gerryMDUs.keys) {
-                statusList.add(UnitStatus(mdu))
-            }
-        }
-        for (s in statusList) {
-            GerryService.instance
-                ?.gerryHandler
-                ?.obtainMessage(GerryService.MSG_GERRY_STATUS_START, mapOf(
-                    "mdu" to s.mduId,
-                    "callback" to {
-                        statusCB(s)
-                    }
-                ))
-                ?.sendToTarget()
-        }
-        statusListAdapter.notifyDataSetChanged()
+        statusRun = true
+        GerryService.instance
+            ?.gerryHandler
+            ?.obtainMessage(
+                GerryService.MSG_GERRY_STATUS_START, mapOf(
+                    "callback" to ::statusCB
+                )
+            )
+            ?.sendToTarget()
     }
 
     private fun stopStatus() {
+        statusRun = false
         GerryService.instance
             ?.gerryHandler
             ?.sendEmptyMessage(GerryService.MSG_GERRY_STATUS_STOP)

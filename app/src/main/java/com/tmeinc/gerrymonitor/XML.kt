@@ -12,8 +12,9 @@ import java.io.StringWriter
 private fun XmlPullParser.parseXMLtoJson(): Any {
     var s = ""
     val o = JSONObject()
-    while (next() != XmlPullParser.END_TAG) {
-        if (eventType == XmlPullParser.START_TAG) {
+    var type = next()
+    while (type != XmlPullParser.END_TAG) {
+        if (type == XmlPullParser.START_TAG) {
             val key = name
             val value = parseXMLtoJson()
             if (o.has(key)) {
@@ -25,11 +26,12 @@ private fun XmlPullParser.parseXMLtoJson(): Any {
             } else {
                 o.put(key, value)
             }
-        } else if (eventType == XmlPullParser.TEXT) {
+        } else if (type == XmlPullParser.TEXT) {
             s = text
-        } else if (eventType == XmlPullParser.END_DOCUMENT) {
+        } else if (type == XmlPullParser.END_DOCUMENT) {
             break
         }
+        type = next()
     }
     return if (o.length() > 0) {
         o
@@ -45,6 +47,7 @@ fun xmlToJson(xml: String): JSONObject {
     return if (j is JSONObject) {
         j
     } else {
+        // return empty Json
         JSONObject()
     }
 }
@@ -156,20 +159,21 @@ private fun XmlSerializer.tagXML(tag: String, obj: Any?) {
 
 private fun XmlSerializer.serializeXML(obj: Any?) {
     when (obj) {
+
         is Map<*, *> -> {
             for (key in obj.keys) {
-                if (key is String) {
-                    val value = obj[key]
-                    if (value is List<*>) {
-                        for (v in value) {
-                            tagXML(key, v)
-                        }
-                    } else {
-                        tagXML(key, value)
+                val tag = key.toString()
+                val value = obj[key]
+                if (value is List<*>) {
+                    for (v in value) {
+                        tagXML(tag, v)
                     }
+                } else {
+                    tagXML(tag, value)
                 }
             }
         }
+
         is JSONObject -> {
             for (key in obj.keys()) {
                 val value = obj[key]
@@ -182,6 +186,7 @@ private fun XmlSerializer.serializeXML(obj: Any?) {
                 }
             }
         }
+
         else -> {
             text("$obj")
         }
@@ -210,43 +215,42 @@ fun JSONObject.toXml(): String {
 
 // get a leaf obj from Any,  ex: "resourceSets/0/resources/0/address/formattedAddress"
 fun Any?.getLeaf(leafPath: String, separator: String = "/"): Any? {
-    if (this == null) {
-        return null
-    }
-    val items = leafPath.split(separator, limit = 2)
-    if (items.isNotEmpty()) {
-        val i0 = items[0]
-        val child =
-            try {
-                when (this) {
+    if (this != null) {
+        val items = leafPath.split(separator, limit = 2)
+        if (items.isNotEmpty()) {
+            val i0 = items[0]
+            val child =
+                try {
+                    when (this) {
 
-                    is Map<*, *> -> {
-                        this[i0]
-                    }
+                        is Map<*, *> -> {
+                            this[i0]
+                        }
 
-                    is JSONObject -> {
-                        this[i0]
-                    }
+                        is JSONObject -> {
+                            this[i0]
+                        }
 
-                    is List<*> -> {
-                        this[i0.toInt()]
-                    }
+                        is List<*> -> {
+                            this[i0.toInt()]
+                        }
 
-                    is JSONArray -> {
-                        this[i0.toInt()]
-                    }
+                        is JSONArray -> {
+                            this[i0.toInt()]
+                        }
 
-                    else -> {
-                        null
+                        else -> {
+                            null
+                        }
                     }
+                } catch (e: Exception) {
+                    null
                 }
-            } catch (e: Exception) {
-                null
+            return if (items.size == 1) {
+                child
+            } else {
+                child?.getLeaf(items[1], separator)
             }
-        return if (items.size == 1) {
-            child
-        } else {
-            child?.getLeaf(items[1], separator)
         }
     }
     return null
@@ -281,14 +285,15 @@ fun Any?.getLeafString(leafPath: String, separator: String = "/"): String {
 // my ATOI hack ,
 //      HarrisonLee@tme put something like <unitsub>n,utc_time</unitsub> into XML, which corrupted String.toInt()
 private fun String.toNumber(): Long {
-    var v = 0L
-    var neg = false
     val len = this.length
     var i = 0
+    var v = 0L
+    var neg = false
 
     // skip space
-    while (i < len && this[i] <= ' ')
+    while (i < len && this[i] <= ' ') {
         i++
+    }
 
     //  neg/pos sign
     if (i < len) {
@@ -301,8 +306,9 @@ private fun String.toNumber(): Long {
     }
 
     // skip space
-    while (i < len && this[i] <= ' ')
+    while (i < len && this[i] <= ' ') {
         i++
+    }
 
     // get the number
     while (i < len && this[i] >= '0' && this[i] <= '9') {
