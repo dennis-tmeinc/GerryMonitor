@@ -232,17 +232,18 @@ class PlayFragment(val mdu: String, val position: Int) : Fragment() {
 
         // set background image
         getBackground()
-        // show first frame
-        showFrame()
 
         return fragmentView
     }
 
     override fun onResume() {
         super.onResume()
+        // show first frame
+        showFrame()
     }
 
     override fun onPause() {
         super.onPause()
+        pause()
     }
 }

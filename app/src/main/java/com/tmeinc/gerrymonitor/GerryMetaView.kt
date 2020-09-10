@@ -12,8 +12,6 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null)
 
-    data class PosePoint(val x: Float, val y: Float)
-
     // initial as HD image
     private var imgWidth = 1920
     private var imgHeight = 1080
@@ -21,8 +19,19 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
     private val screenDensity =
         context.resources.displayMetrics.density
 
-    private var xScale = 1.0f
-    private var yScale = 1.0f
+    class PosePoint {
+        var x = 0.0f
+        var y = 0.0f
+        val isValid: Boolean
+            get() = y > 0.0f || x > 0.0f
+    }
+
+    // drawing pose for single person
+    private val pose = Array(18) {
+        PosePoint()
+    }
+
+    private var poseList = emptyList<String>()
 
     private val paint = Paint().apply {
         style = Paint.Style.STROKE
@@ -30,38 +39,23 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
         color = Color.RED
     }
 
-    private var poseList = emptyList<List<PosePoint>>()
+    private val path = Path()
 
     // remove poses after 30 seconds
     private val resetPosesRunnable = Runnable {
-        poseList = emptyList<List<PosePoint>>()
-        postInvalidateDelayed(1000)
+        poseList = emptyList()
+        postInvalidateOnAnimation()
     }
 
     var autoClear = true
 
     // may called from other thread
     fun setPoses(poses: List<Any?>) {
-        poseList = List(poses.size) { i ->
-            val poseStr = poses[i]
-            if (poseStr is String) {
-                val p = poseStr.split(",")
-                List(18) {
-                    if (it < p.size / 2) {
-                        PosePoint(
-                            p[it * 2].trim().toFloat() * xScale,
-                            p[it * 2 + 1].trim().toFloat() * yScale
-                        )
-                    } else {
-                        PosePoint(0.0f, 0.0f)
-                    }
-                }
-            } else {
-                emptyList()
-            }
+        poseList = List(poses.size) {
+            poses[it] as? String ?: ""
         }
         // redraw pose image
-        postInvalidate()
+        postInvalidateOnAnimation()
 
         // auto clear poses after 10 seconds
         if (autoClear) {
@@ -76,8 +70,10 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
     fun setBackground(bgImage: Bitmap, w: Int, h: Int) {
         imgWidth = w
         imgHeight = h
+
         // scaled image
         setImageBitmap(bgImage)
+        postInvalidateOnAnimation()
     }
 
     // check if view is visible on Screen
@@ -98,86 +94,96 @@ class GerryMetaView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
         if (canvas == null)
             return
 
-        xScale = width.toFloat() / imgWidth
-        yScale = height.toFloat() / imgHeight
+        val xScale = width.toFloat() / imgWidth
+        val yScale = height.toFloat() / imgHeight
 
-        val pl = poseList
-        for (pose in pl) {
-            if (pose.size < 18)
-                continue
+        fun isPointValid(p: Int): Boolean {
+            return pose[p].isValid
+        }
 
-            fun drawLine(p1: PosePoint, p2: PosePoint) {
-                if (p1.x > 0 && p1.y > 0 && p2.x > 0 && p2.y > 0) {
-                    paint.style = Paint.Style.STROKE
-                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
-                }
-            }
-
-            fun drawCircle(c: PosePoint, r: Float) {
-                if (c.x > 0 && c.y > 0) {
-                    canvas.drawCircle(c.x, c.y, r, paint)
-                }
-            }
-
-            fun getCenterOfHead(): PosePoint {
-                return PosePoint(0.0f, 0.0f)
-            }
-
-            fun getBodySize(): Int {
-                return 0
-            }
-
-            fun drawHead() {
-
-                paint.color = Color.GREEN
-                paint.style = Paint.Style.FILL
-                drawCircle(pose[p_l_ear], screenDensity * 4)
-                drawCircle(pose[p_r_ear], screenDensity * 4)
-
-                paint.color = Color.BLUE
+        fun drawLine(p1: Int, p2: Int) {
+            if (isPointValid(p1) && isPointValid(p2)) {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = screenDensity * 1
-                drawCircle(pose[p_l_eye], screenDensity * 2)
-                drawCircle(pose[p_r_eye], screenDensity * 2)
-
-                paint.color = Color.YELLOW
-                paint.style = Paint.Style.FILL
-                drawCircle(pose[p_nose], screenDensity * 3)
+                canvas.drawLine(pose[p1].x, pose[p1].y, pose[p2].x, pose[p2].y, paint)
             }
+        }
 
-            fun drawTrunk() {
-                Path().also {
-                    if (pose[p_neck].x > 0 && pose[p_neck].y > 0)
-                        it.moveTo(pose[p_neck].x, pose[p_neck].y)
-                    else if (pose[p_l_shoulder].x > 0 && pose[p_l_shoulder].y > 0)
-                        it.moveTo(pose[p_l_shoulder].x, pose[p_l_shoulder].y)
-                    else
-                        it.moveTo(pose[p_r_shoulder].x, pose[p_r_shoulder].y)
-                    if (pose[p_l_shoulder].x > 0 && pose[p_l_shoulder].y > 0)
-                        it.lineTo(pose[p_l_shoulder].x, pose[p_l_shoulder].y)
-                    if (pose[p_l_hip].x > 0 && pose[p_l_hip].y > 0)
-                        it.lineTo(pose[p_l_hip].x, pose[p_l_hip].y)
-                    if (pose[p_r_hip].x > 0 && pose[p_r_hip].y > 0)
-                        it.lineTo(pose[p_r_hip].x, pose[p_r_hip].y)
-                    if (pose[p_r_shoulder].x > 0 && pose[p_r_shoulder].y > 0)
-                        it.lineTo(pose[p_r_shoulder].x, pose[p_r_shoulder].y)
-                    it.close()
+        fun drawCircle(c: Int, r: Float) {
+            if (isPointValid(c)) {
+                canvas.drawCircle(pose[c].x, pose[c].y, r, paint)
+            }
+        }
+
+        fun getBodySize(): Int {
+            return 0
+        }
+
+        fun drawHead() {
+
+            paint.color = Color.GREEN
+            paint.style = Paint.Style.FILL
+            drawCircle(p_l_ear, screenDensity * 4)
+            drawCircle(p_r_ear, screenDensity * 4)
+
+            paint.color = Color.BLUE
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = screenDensity * 1
+            drawCircle(p_l_eye, screenDensity * 2)
+            drawCircle(p_r_eye, screenDensity * 2)
+
+            paint.color = Color.YELLOW
+            paint.style = Paint.Style.FILL
+            drawCircle(p_nose, screenDensity * 3)
+        }
+
+        fun drawTrunk() {
+            path.apply {
+                rewind()
+
+                var p = 0
+                for (i in arrayOf (
+                    p_neck, p_r_shoulder, p_r_hip, p_l_hip, p_l_shoulder
+                )) {
+                    if (isPointValid(i)) {
+                        if (p == 0) {
+                            moveTo(pose[i].x, pose[i].y)
+                        } else {
+                            lineTo(pose[i].x, pose[i].y)
+                        }
+                        p++
+                    }
+                }
+                if (p > 1) {
+                    close()
                     paint.color = Color.RED
                     paint.style = Paint.Style.FILL
-                    canvas.drawPath(it, paint)
+                    canvas.drawPath(this, paint)
                 }
             }
+        }
 
-            fun drawArm(p1: Int, p2: Int) {
-                drawLine(pose[p1], pose[p2])
-            }
+        fun drawArm(p1: Int, p2: Int) {
+            drawLine(p1, p2)
+        }
 
-            fun drawLeg(p1: Int, p2: Int) {
-                drawLine(pose[p1], pose[p2])
-            }
+        fun drawLeg(p1: Int, p2: Int) {
+            drawLine(p1, p2)
+        }
 
-            fun drawLeg(p1: Int, p2: Int, p3: Int) {
-                drawLine(pose[p1], pose[p2])
+        fun drawLeg(p1: Int, p2: Int, p3: Int) {
+            drawLine(p1, p2)
+        }
+
+        for (p in poseList) {
+            val ps = p.split(",")
+            for (i in 0 until 18) {
+                if (i < ps.size / 2) {
+                    pose[i].x = ps[i * 2].trim().toFloat() * xScale
+                    pose[i].y = ps[i * 2 + 1].trim().toFloat() * yScale
+                } else {
+                    pose[i].x = 0.0f
+                    pose[i].y = 0.0f
+                }
             }
 
             drawHead()

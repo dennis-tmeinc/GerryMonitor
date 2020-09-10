@@ -67,7 +67,7 @@ class GerryService : Service() {
         const val MSG_GERRY_GET_EVENTS = 1011       // get events or alerts (what's difference?)
         const val MSG_GERRY_GET_CAM_INFO = 1012
 
-        const val GERRY_KEEP_ALIVE_TIME = 600000L       // every 10m
+        const val GERRY_KEEP_ALIVE_TIME = 120000L       // every 2m
 
         const val serviceName = "gerryService"
         const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
@@ -546,8 +546,13 @@ class GerryService : Service() {
     @Suppress("UNUSED_PARAMETER")
     private fun gerryInit(msg: Message) {
 
-        if (socket.isConnected && gerryRun == RUN_RUN)        // already successfully connected
+        if (socket.isConnected && gerryRun == RUN_RUN) {       // already successfully connected
+            gerryHandler.sendEmptyMessageDelayed(
+                MSG_GERRY_KEEP_ALIVE,
+                3000
+            )
             return
+        }
 
         // check internet connectivity before run service
         if (!isNetworkActive()) {
@@ -590,11 +595,13 @@ class GerryService : Service() {
     }
 
     private fun gerryLogin(msg: Message) {
-        if (socket.isConnected && gerryRun == RUN_RUN)        // already successfully connected
+        if (socket.isConnected && gerryRun == RUN_RUN) {        // already successfully connected
+            gerryHandler.sendEmptyMessageDelayed(
+                MSG_GERRY_KEEP_ALIVE,
+                3000
+            )
             return
-
-        if (gerryRun > 0)
-            gerryRun = RUN_USER_LOGIN
+        }
 
         socket.close()
 
@@ -610,6 +617,10 @@ class GerryService : Service() {
 
         val s = gerryConnect()
         if (s == null) {
+
+            if (gerryRun > 0)
+                gerryRun = RUN_USER_LOGIN
+
             // wrong clientId
             mainHandler.post {
                 Toast.makeText(
@@ -1009,7 +1020,6 @@ class GerryService : Service() {
                     MSG_GERRY_STATUS_START -> {
                         // start gerry live status
                         gerryStatusStart(msg)
-
                     }
 
                     MSG_GERRY_STATUS_STOP -> {
@@ -1216,7 +1226,7 @@ class GerryService : Service() {
 }
 
 // read file through Gerry Service
-fun gerryReadFileX(path: String): ByteArray {
+fun gerryReadFile(path: String): ByteArray {
     val bufStream = ByteArrayOutputStream()
     val gerrySocket = GerryService.instance?.gerryConnect()
     if (gerrySocket != null) {
@@ -1231,7 +1241,7 @@ fun gerryReadFileX(path: String): ByteArray {
         ) {
             val readMsg = GerryMsg(GerryMsg.CLIENT_READFILE)
             while (true) {
-                readMsg.dwData = GerryMsg.MAX_XDATA
+                readMsg.dwData = 512*1024
                 readMsg.qwData = bufStream.size().toLong()
                 gerrySocket.sendGerryMsg(readMsg)
                 val ack = gerrySocket.gerryAck(readMsg.command)
@@ -1257,7 +1267,7 @@ fun gerryReadFileX(path: String): ByteArray {
 
 
 // read file through Gerry Service
-fun gerryReadFile(path: String): ByteArray {
+fun gerryReadFileX(path: String): ByteArray {
     GerryService.instance?.gerryConnect()?.use {
         if (it.gerryCmd(
                 GerryMsg.CLIENT_OPEN_READFILE,

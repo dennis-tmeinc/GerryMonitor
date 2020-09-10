@@ -82,9 +82,8 @@ class LiveFragment(val mdu: String, val position: Int) : Fragment() {
                     }
 
                 } else {
-                    // use http is much faster, why?
+                    // use http is much faster
                     // val bgData = gerryGetFile(bgFilename)
-
                     val bgData = gerryReadFile(bgFilename)
                     if (bgData.size < 8) {
                         return@submit

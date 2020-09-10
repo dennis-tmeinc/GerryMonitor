@@ -199,10 +199,10 @@ class EventFragment(val type: String = ALERT_LIST) : Fragment() {
 
             val now = System.currentTimeMillis() / 1000
             val start =
-                if (eventList.isNotEmpty()) {
-                    eventList[0].ts + 1
+                if (eventList.isEmpty()) {
+                    now - 24 * 3600 * eventDuration
                 } else {
-                    now - eventDuration * 24 * 3600
+                    eventList[0].ts + 1
                 }
 
             val obj = mapOf(

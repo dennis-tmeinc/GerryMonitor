@@ -31,6 +31,7 @@ class LoginActivity : AppCompatActivity() {
         // Create an ArrayAdapter for client_id spinner
         var sel = 0
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item)
+
         if (GerryService.instance != null) {
             val cl = GerryService.gerryClient["clients"]
             if (cl is Map<*, *>) {
@@ -117,7 +118,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        timerHandler.removeCallbacksAndMessages(null)
+        timerHandler.removeCallbacks(timerRunnable)
     }
 
 }

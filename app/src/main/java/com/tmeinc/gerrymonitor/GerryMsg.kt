@@ -56,6 +56,8 @@ class GerryMsg() {
         const val CLIENT_GET_EVENTS = 12
         const val NOTIFY_ALERT = 13
         const val CLIENT_GET_CAM_INFO = 14
+        const val CLIENT_SET_ALERT_STATUS = 15      // 15
+        const val CLIENT_ACCOUNT_RECOVERY = 16      // 16
         const val CLIENT_KEEPALIVE = 255
 
         // mdu message
@@ -81,9 +83,8 @@ class GerryMsg() {
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
 
-        // max xdata size
+        // max xdata size, used to be 10M, ReadFile failed on server side (2020-09-08)
         const val MAX_XDATA = 10000000
-
     }
 
     val mssMsg: ByteBuffer = ByteBuffer.allocate(msg_size)
@@ -232,7 +233,7 @@ val status_icons = arrayOf(
 )
 
 val status_texts = arrayOf(
-    R.string.status_not_ready,
+    R.string.status_unknown,
     R.string.status_standing,               //    STANDING = 1,
     R.string.status_lying_on_floor,         //    LYING_ON_FLOOR = 2,
     R.string.status_lying_on_bed,           //    LYING_ON_BED = 3,
@@ -281,12 +282,15 @@ enum event_type {
   STAY_IN_SHOWER_TOO_LONG=28,
   SIT_ON_TOILET_TOO_LONG=29,
   SITTING_ON_SOFA_TOO_LONG=30
-}
 
+  // added by Quang, email
+  // 31, Coughing
+  // 32, Stop breathing
  */
+
 val event_icons = arrayOf(
     R.drawable.icon_gerry_event,            // I use this for mdu disconnecting ,
-    R.drawable.icon_laying_on_floor,        //  ON_FLOOR = 1,
+    R.drawable.icon_falling,                //  ON_FLOOR = 1,  (this is fallen on floor, according Linh's email 2020-09-08)
     R.drawable.icon_laying_on_floor,        //  ON_FLOOR_NO_MOVEMENT = 2,
     R.drawable.icon_getting_up_from_floor,  //  OFF_FLOOR = 3,
     R.drawable.icon_entering_room,          //  ENTERING  = 4,
@@ -330,7 +334,7 @@ val event_icons = arrayOf(
 
 val event_texts = arrayOf(
     R.string.event_mdu_disconnect,      // I use event 0 for mdu disconnected ( event type = 10000 from Server Message)
-    R.string.event_on_floor,                        //  ON_FLOOR = 1,
+    R.string.event_on_floor,                 //  ON_FLOOR = 1,  (according to Linh's email 2020-09-08)
     R.string.event_on_floor_no_movement,            //  ON_FLOOR_NO_MOVEMENT = 2,
     R.string.event_off_floor,                       //  OFF_FLOOR = 3,
     R.string.event_entering,                        //  ENTERING  = 4,

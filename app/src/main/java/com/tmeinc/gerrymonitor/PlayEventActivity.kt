@@ -44,6 +44,7 @@ class PlayEventActivity : AppCompatActivity() {
                 if (genFile.isBlank()) {
                     return@submit
                 }
+                // val genXML = gerryGetFile(genFile)
                 val genXML = gerryReadFile(genFile)
                 val gen = String(genXML).xmlObj()
                 val camList = gen.getLeafArray("mdup/animation/camera")

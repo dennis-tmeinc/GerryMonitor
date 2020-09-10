@@ -45,8 +45,8 @@
 
     <string name="event_unknown">Unknown event</string>
     <string name="event_mdu_disconnect">Mdu disconnected</string>
-    <string name="event_on_floor">On floor</string>
-    <string name="event_on_floor_no_movement">On floor no movement</string>
+    <string name="event_on_floor">Fallen, on floor</string>
+    <string name="event_on_floor_no_movement">On floor, no movement</string>
     <string name="event_off_floor">Off floor</string>
     <string name="event_entering">Entering</string>
 
