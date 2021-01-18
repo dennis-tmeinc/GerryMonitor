@@ -111,13 +111,20 @@ class StatusFragment : Fragment() {
                                 "Room: ${roomName}"
 
                             var si = subSplit[0].trim().toInt()
+                            var sIcon = status_icons[0];
+                            var sText = status_texts[0];
+                            if( si>=0 && si < status_icons.size ) {
+                                sIcon = status_icons[si];
+                                sText = status_texts[si];
+                            }
+
                             if (si < 0 || si >= status_icons.size)
                                 si = 0
                             (statusSub.findViewById(R.id.statusIcon) as ImageView).setImageResource(
-                                status_icons[si]
+                                sIcon
                             )
                             (statusSub.findViewById(R.id.statusText) as TextView).setText(
-                                status_texts[si]
+                                sText
                             )
 
                             val statusTimeText: TextView = statusSub.findViewById(R.id.statusTime)

@@ -5,7 +5,7 @@ import java.nio.ByteOrder
 import java.util.zip.CRC32
 
 /** mss_msg protocol structure
- * defined by Tongrui@TME
+ * from documents by Tongrui@TME
  * All values in LSB first(little endian: 0x01234567 = 67 45 23 01).
  * struct mss_msg
  * {
@@ -65,6 +65,13 @@ class GerryMsg() {
         const val MDU_STATUS_DATA = 205
         const val MDU_EVENT_DATA = 206
 
+        // address server messages
+        const val AS_LOGIN_REQUEST = (1)
+        const val AS_LOGIN_PASSWORD = (2)
+        const val AS_GET_SERVER_IP = (3)
+        const val AS_REGISTER_UNIT = (4)
+        const val AS_REGISTER_SERVER = (5)
+
         // error code
         const val REASON_NONE = 0
         const val REASON_UNKNOWN_COMMAND = 1
@@ -83,7 +90,7 @@ class GerryMsg() {
         const val ACK_FAIL = 1
         const val ACK_SUCCESS = 2
 
-        // max xdata size, used to be 10M, ReadFile failed on server side (2020-09-08)
+        // max x-data size
         const val MAX_XDATA = 10000000
     }
 
@@ -211,6 +218,8 @@ enum subject_status {
     IN_SHOWER=12,
     UNIT_EMPTY=13,
     STANDING_ON_CHAIR=14,
+    ** added 12/02/2020
+    STATUS_SITTING_ON_FLOOR=15,
 }
 */
 
@@ -229,7 +238,9 @@ val status_icons = arrayOf(
     R.drawable.icon_sitting_on_sofa,        //    SITTING_ON_SOFA=11,
     R.drawable.icon_showering,              //    IN_SHOWER=12,
     R.drawable.icon_away_not_in_unit,       //    UNIT_EMPTY=13,
-    R.drawable.icon_dangerous_maneuver      //    STANDING_ON_CHAIR=14,
+    R.drawable.icon_dangerous_maneuver,      //    STANDING_ON_CHAIR=14,
+// added 12/02/20202
+    R.drawable.icon_sitting_on_floor        //    STATUS_SITTING_ON_FLOOR=15,
 )
 
 val status_texts = arrayOf(
@@ -247,7 +258,8 @@ val status_texts = arrayOf(
     R.string.status_sitting_on_sofa,        //    SITTING_ON_SOFA=11,
     R.string.status_in_shower,              //    IN_SHOWER=12,
     R.string.status_unit_empty,             //    UNIT_EMPTY=13,
-    R.string.status_standing_on_chair       //    STANDING_ON_CHAIR=14,
+    R.string.status_standing_on_chair,       //    STANDING_ON_CHAIR=14,
+    R.string.status_sitting_on_floor,   // STATUS_SITTING_ON_FLOOR=15
 )
 
 /*
@@ -284,8 +296,20 @@ enum event_type {
   SITTING_ON_SOFA_TOO_LONG=30
 
   // added by Quang, email
-  // 31, Coughing
-  // 32, Stop breathing
+  31, Coughing
+  32, Stop breathing
+
+  For event:        12/02/2020
+  EVENT_SIT_ON_FLOOR=33,
+
+  // 20210111, added events
+  1. added events
+  EVENT_MAIN_POWER_DISCONNECT=34,
+  EVENT_BAT_LOW_40=35,
+  EVENT_BAT_LOW_30=36,
+  EVENT_BAT_LOW_20=37,
+  EVENT_BAT_LOW_SHUTDOWN=38,
+
  */
 
 val event_icons = arrayOf(
@@ -327,8 +351,16 @@ val event_icons = arrayOf(
 
     R.drawable.icon_sitting_on_sofa,         //  SITTING_ON_SOFA_TOO_LONG=30
 
-    R.drawable.icon_gerry_event,         //  Coughing
-    R.drawable.icon_gerry_event         //   Stop breathing
+    R.drawable.icon_gerry_event,         //   Coughing, 31
+    R.drawable.icon_gerry_event,         //   Stop breathing, 32
+
+    R.drawable.icon_sitting_on_floor,   // EVENT_SIT_ON_FLOOR, 33
+
+    R.drawable.icon_gerry_event,        // 34
+    R.drawable.icon_gerry_event,        // 35
+    R.drawable.icon_gerry_event,        // 36
+    R.drawable.icon_gerry_event,        // 37
+    R.drawable.icon_gerry_event,        // 38
 
 )
 
@@ -371,6 +403,15 @@ val event_texts = arrayOf(
 
     R.string.event_sitting_on_sofa,                 //  SITTING_ON_SOFA_TOO_LONG=30
     R.string.event_coughing,       // 31,
-    R.string.event_stop_breathing           // 32
+    R.string.event_stop_breathing,           // 32
+
+    R.string.event_sit_on_floor,                                   // EVENT_SIT_ON_FLOOR=33,
+
+    // events added 34-38
+    R.string.event_main_power_disconnect,
+    R.string.event_bat_low_40,
+    R.string.event_bat_low_30,
+    R.string.event_bat_low_20,
+    R.string.event_bat_low_shutdown,
 
 )

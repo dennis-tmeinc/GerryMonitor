@@ -67,11 +67,15 @@ class GerryService : Service() {
         const val MSG_GERRY_GET_EVENTS = 1011       // get events or alerts (what's difference?)
         const val MSG_GERRY_GET_CAM_INFO = 1012
 
+        const val MSG_GERRY_AS_GET_SERVER_IP =1013  // get gerry server ip from ivu server, based on client id
+
         const val GERRY_KEEP_ALIVE_TIME = 120000L       // every 2m
 
         const val serviceName = "gerryService"
-        const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
-        const val gerryDefaultServer = "207.112.107.194"
+        //const val gerryClientUri = "https://tme-marcus.firebaseio.com/gerryclients.json"
+        const val gerryClientUri = "http://ivu.247securityinc.com/gerrymgr/clientlist.php?global=1"
+        // known servers: 207.112.107.194, 207.112.107.195, 207.112.107.198
+        const val gerryDefaultServer = "207.112.107.198"
         const val gerryDefaultPort = 48005
 
         var instance: GerryService? = null
@@ -81,6 +85,22 @@ class GerryService : Service() {
 
         // list of gerry mdu
         val gerryMDUs = mutableMapOf<String, Any>()
+
+        // get server ip(hostname) from client nameserver (ivu.247securityinc.com)
+        val gerryServer:String
+            get()
+            {
+                val cl = gerryClient["clients"]
+                if (cl is List<*>) {
+                    for (c in cl) {
+                        val id = c.getLeafString("ClientId")
+                        if (id == clientID) {
+                            return c.getLeafString("ServerIp");
+                        }
+                    }
+                }
+                return gerryDefaultServer
+            }
 
     }
 
@@ -169,7 +189,7 @@ class GerryService : Service() {
                 channel
             )
 
-            // forground service notification channel
+            // foreground service notification channel
             notificationChannelId = getString(R.string.notification_service_name)
             descriptionText = "Gerry Service Notification"
 
@@ -454,17 +474,19 @@ class GerryService : Service() {
     // return null if failed
     fun gerryConnect(): GerrySocket? {
 
-        var server = gerryDefaultServer
-        var port = gerryDefaultPort
-        var client = clientID
+        val port = gerryDefaultPort
+        val client = clientID
+        val server =  gerryServer
 
         // get server/port from gerryClient
+        /*
         val clientEntry = gerryClient.getLeaf("clients/${client}")
         if (clientEntry is Map<*, *>) {
             server = gerryClient.getLeafString("clients/${client}/server")
             port = gerryClient.getLeafInt("clients/${client}/port")
             client = gerryClient.getLeafString("clients/${client}/clientid")
         }
+        */
 
         // username , server ip are must
         if (username.isBlank() || server.isBlank() || port == 0) {
@@ -699,6 +721,12 @@ class GerryService : Service() {
                 }
             }
         }
+    }
+
+    // send out keep alive message
+    @Suppress("UNUSED_PARAMETER")
+    private fun gerryAsGetServer(msg: Message) {
+        // get sever ip from client id
     }
 
     // send out keep alive message
@@ -1006,6 +1034,11 @@ class GerryService : Service() {
                         gerryKeepAlive(msg)
                     }
 
+                    MSG_GERRY_AS_GET_SERVER_IP -> {
+                        // get gerry server ip based on client id
+                        gerryAsGetServer(msg)
+                    }
+
                     MSG_GERRY_GET_MDU_LIST -> {
                         // get mdu list
                         gerryGetMduList(msg)
@@ -1296,8 +1329,7 @@ fun gerryReadFileX(path: String): ByteArray {
 // Gerry http services
 // return content in ByteBuffer form pos to limit
 fun gerryFileService(req: String): ByteArray {
-    val fileService =
-        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/fileservice")
+    val fileService = "http://${GerryService.gerryServer}/gerrymgr/fileservice.php"
     try {
         val bufStream = ByteArrayOutputStream()
         val uri = URI("${fileService}?${req}")
@@ -1323,17 +1355,3 @@ fun gerryGetFile(path: String): ByteArray {
     return gerryFileService("c=r&n=$encPath")
 }
 
-fun gerryDB(sql: String): JSONObject {
-    val host =
-        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/host")
-    val username =
-        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/username")
-    val password =
-        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/password")
-    val dbname =
-        GerryService.gerryClient.getLeafString("clients/${GerryService.clientID}/db/dbname")
-    val encDb = URLEncoder.encode("$host:$username:$password:$dbname", "UTF-8")
-    val encSql = URLEncoder.encode(sql, "UTF-8")
-    val res = gerryFileService("c=db&n=${encSql}&l=$encDb")
-    return JSONObject(String(res))
-}

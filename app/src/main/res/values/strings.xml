@@ -42,6 +42,7 @@
     <string name="status_in_shower">In shower</string>
     <string name="status_unit_empty">Empty</string>
     <string name="status_standing_on_chair">Standing on chair</string>
+    <string name="status_sitting_on_floor">Sitting on floor</string>
 
     <string name="event_unknown">Unknown event</string>
     <string name="event_mdu_disconnect">Mdu disconnected</string>
@@ -83,6 +84,15 @@
     <string name="event_sit_on_sofa_too_long">Sit on sofa too long</string>
     <string name="event_coughing">Coughing</string>
     <string name="event_stop_breathing">Stop breathing</string>
+
+    <string name="event_sit_on_floor">Sit on floor</string>
+
+    <!-- events added 20210111 ( 34-38 ) -->
+    <string name="event_main_power_disconnect">Main power disconnect</string>
+    <string name="event_bat_low_40">Battery low (40%)</string>
+    <string name="event_bat_low_30">Battery low (30%)</string>
+    <string name="event_bat_low_20">Battery low (20%)</string>
+    <string name="event_bat_low_shutdown">Battery low shutdown</string>
 
     <string name="title_activity_gerry_live">Gerry Live</string>
     <string name="tab_text_1">Tab 1</string>

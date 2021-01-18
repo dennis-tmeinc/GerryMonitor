@@ -34,8 +34,9 @@ class LoginActivity : AppCompatActivity() {
 
         if (GerryService.instance != null) {
             val cl = GerryService.gerryClient["clients"]
-            if (cl is Map<*, *>) {
-                for (id in cl.keys) {
+            if (cl is List<*>) {
+                for (c in cl) {
+                    val id = c.getLeafString("ClientId")
                     if (id is String) {
                         adapter.add(id)
                         if (id == GerryService.clientID) {
