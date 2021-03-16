@@ -282,7 +282,7 @@ fun Any?.getLeafString(leafPath: String, separator: String = "/"): String {
     return getLeaf(leafPath, separator)?.toString() ?: ""
 }
 
-// my ATOI hack ,
+// my "atoi" hack ,
 //      HarrisonLee@tme put something like <unitsub>n,utc_time</unitsub> into XML, which corrupted String.toInt()
 private fun String.toNumber(): Long {
     val len = this.length
